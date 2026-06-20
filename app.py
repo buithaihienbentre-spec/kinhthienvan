@@ -4,9 +4,9 @@ import time
 import threading
 import os
 
-# ================== GEMINI - SỬA IMPORT ==================
+# ================== GEMINI - PHIÊN BẢN MỚI (2026) ==================
 import google.generativeai as genai
-from google.generativeai import types
+from google.generativeai.types import GenerateContentConfig
 
 app = Flask(__name__)
 
@@ -20,42 +20,23 @@ GEMINI_API_KEY_LEARNING = os.environ.get("GEMINI_API_KEY_LEARNING") or GEMINI_AP
 
 print(f"🔑 Gemini Key: {str(GEMINI_API_KEY_MAIN)[:15]}...")
 
-_client_main = None
-_client_learning = None
-
 try:
-    _client_main = genai.Client(api_key=GEMINI_API_KEY_MAIN)
-    _client_learning = genai.Client(api_key=GEMINI_API_KEY_LEARNING)
-    print("✅ Khởi tạo Gemini Client thành công!")
+    genai.configure(api_key=GEMINI_API_KEY_MAIN)
+    print("✅ Khởi tạo Gemini thành công!")
 except Exception as e:
     print(f"❌ Lỗi khởi tạo Gemini: {e}")
 
-# === MODEL NAMES ===
 MAIN_MODEL_NAME = "gemini-2.5-flash"
 LEARNING_MODEL_NAME = "gemini-2.5-flash-lite"
 
 MAIN_SYSTEM = """
 Bạn là Chatbot Thiên Văn thông minh, hỗ trợ học sinh sử dụng kính thiên văn trong học tập STEM.
-
-Nhiệm vụ:
-- Giải thích các hiện tượng thiên văn: Mặt Trăng, hành tinh, chòm sao, tinh vân
-- Hướng dẫn sử dụng kính thiên văn: xoay, zoom, căn chỉnh
-- Gợi ý nên quan sát gì theo thời gian (ban đêm, vị trí bầu trời)
-- Trả lời ngắn gọn, dễ hiểu, phù hợp học sinh THPT
-
-Phong cách:
-- Thân thiện, dễ hiểu
-- Có thể đưa ví dụ thực tế
-- Không dùng ký tự đặc biệt phức tạp
+Nhiệm vụ: Giải thích thiên văn, hướng dẫn sử dụng kính, gợi ý quan sát.
+Phong cách: Thân thiện, dễ hiểu, phù hợp học sinh THPT.
 """
 
 LEARNING_FORMAT_RULES = """
-Quy tắc định dạng:
-- Trả lời tiếng Việt, thân thiện như giáo viên
-- KHÔNG dùng markdown, không **, không #, không bullet
-- Viết văn xuôi, ngắn gọn, dễ hiểu
-- Khuyến khích học sinh, tích cực
-- Nếu không chắc: "Bạn nên tham khảo thêm tài liệu hoặc hỏi giáo viên nhé!"
+Trả lời tiếng Việt, thân thiện như giáo viên. Viết văn xuôi, ngắn gọn, không markdown.
 """
 
 _main_chat_lock = threading.Lock()
@@ -74,12 +55,10 @@ except Exception as e:
 def _build_history_contents(history_list):
     contents = []
     for turn in history_list:
-        contents.append(
-            types.Content(
-                role=turn["role"],
-                parts=[types.Part.from_text(text=p) for p in turn["parts"]],
-            )
-        )
+        contents.append({
+            "role": turn["role"],
+            "parts": [genai.types.Part.from_text(text=p) for p in turn["parts"]]
+        })
     return contents
 
 # ================== ROUTES ==================
@@ -110,79 +89,66 @@ def chat():
     if not user_message:
         return jsonify({"response": "Bạn muốn hỏi gì về thiên văn?"})
 
-    if _client_main is None:
-        return jsonify({"response": "Server chưa cấu hình Gemini API Key."})
+    try:
+        model = genai.GenerativeModel(MAIN_MODEL_NAME)
+        contents = _build_history_contents(_main_chat_history)
+        contents.append({
+            "role": "user", 
+            "parts": [genai.types.Part.from_text(text=user_message)]
+        })
 
-    with _main_chat_lock:
-        try:
-            contents = _build_history_contents(_main_chat_history)
-            contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_message)]))
-
-            resp = _client_main.models.generate_content(
-                model=MAIN_MODEL_NAME,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=MAIN_SYSTEM,
-                    temperature=0.7,
-                    max_output_tokens=1000
-                ),
+        resp = model.generate_content(
+            contents,
+            generation_config=GenerateContentConfig(
+                system_instruction=MAIN_SYSTEM,
+                temperature=0.7,
+                max_output_tokens=1000
             )
-            reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời. Bạn hỏi lại nhé!"
+        )
+        reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời."
 
-            _main_chat_history.append({"role": "user", "parts": [user_message]})
-            _main_chat_history.append({"role": "model", "parts": [reply]})
-            if len(_main_chat_history) > 40:
-                del _main_chat_history[:2]
+        _main_chat_history.append({"role": "user", "parts": [user_message]})
+        _main_chat_history.append({"role": "model", "parts": [reply]})
+        if len(_main_chat_history) > 40:
+            del _main_chat_history[:2]
 
-            return jsonify({"response": reply})
-        except Exception as e:
-            print(f"❌ Chat error: {e}")
-            return jsonify({"response": f"Lỗi: {str(e)[:150]}"})
+        return jsonify({"response": reply})
+    except Exception as e:
+        print(f"❌ Chat error: {e}")
+        return jsonify({"response": "Lỗi kết nối AI. Thử lại sau nhé!"})
 
 # ----- Learning Hub chat -----
 @app.route('/learning_chat', methods=['POST'])
 def learning_chat():
     data = request.get_json() or {}
-    system_prompt = data.get('system_prompt', 'Bạn là AI gia sư Thiên Văn STEM thân thiện.')
+    system_prompt = data.get('system_prompt', '')
     messages = data.get('messages', [])
-    if not messages:
-        return jsonify({"reply": "Không có tin nhắn."})
-
-    if _client_learning is None:
-        return jsonify({"reply": "Server chưa cấu hình Gemini API Key."})
-
-    full_system = system_prompt + "\n\n" + LEARNING_FORMAT_RULES
-
-    gemini_history = []
-    for msg in messages[:-1]:
-        role = "user" if msg.get('role') == 'user' else "model"
-        gemini_history.append({"role": role, "parts": [msg.get('content', '')]})
-
-    last_content = messages[-1].get('content', '')
 
     try:
-        contents = _build_history_contents(gemini_history)
-        contents.append(types.Content(role="user", parts=[types.Part.from_text(text=last_content)]))
+        full_system = system_prompt + "\n\n" + LEARNING_FORMAT_RULES
+        model = genai.GenerativeModel(LEARNING_MODEL_NAME)
 
-        resp = _client_learning.models.generate_content(
-            model=LEARNING_MODEL_NAME,
-            contents=contents,
-            config=types.GenerateContentConfig(
+        contents = _build_history_contents(messages[:-1])
+        last_msg = messages[-1].get('content', '')
+        contents.append({"role": "user", "parts": [genai.types.Part.from_text(text=last_msg)]})
+
+        resp = model.generate_content(
+            contents,
+            generation_config=GenerateContentConfig(
                 system_instruction=full_system,
                 temperature=0.8,
                 max_output_tokens=800
-            ),
+            )
         )
-        reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời. Bạn hỏi lại nhé!"
+        reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời."
     except Exception as e:
         print(f"❌ Learning chat error: {e}")
-        reply = f"Xin lỗi, AI đang gặp sự cố. Thử lại nhé! 🙏"
+        reply = "Xin lỗi, AI đang gặp sự cố. Thử lại nhé! 🙏"
 
     return jsonify({"reply": reply})
 
 if __name__ == '__main__':
     if not os.path.exists('static'):
         os.makedirs('static')
-    print("🌌 Kính Thiên Văn STEM đang chạy...")
-    print("📍 Truy cập: http://127.0.0.1:5000")
-    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
+    print("🌌 Kính Thiên Văn STEM đang chạy trên Render...")
+    app.run(host='0.0.0.0', port=5000, threaded=True)
