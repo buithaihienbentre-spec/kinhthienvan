@@ -1,5 +1,5 @@
 from flask import Flask, Response, request, jsonify, send_from_directory
-import cv2
+# import cv2
 import serial
 import time
 import threading
