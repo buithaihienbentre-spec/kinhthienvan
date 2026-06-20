@@ -4,8 +4,8 @@ import serial
 import time
 import threading
 import os
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 
 app = Flask(__name__)
 
