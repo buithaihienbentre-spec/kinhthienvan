@@ -1,33 +1,28 @@
-from flask import Flask, Response, request, jsonify, send_from_directory
-import serial
-import time
-import threading
+from flask import Flask, request, jsonify, send_from_directory
 import os
 
-# ================== GEMINI ==================
 import google.generativeai as genai
 
 app = Flask(__name__)
 
-# ================== CẤU HÌNH ==================
-SERIAL_PORT = "COM8"
-BAUD_RATE = 9600
-
-# ================== GEMINI ==================
+# ================== GEMINI - HỖ TRỢ 2 KEY RIÊNG ==================
 GEMINI_API_KEY_MAIN = os.environ.get("GEMINI_API_KEY_MAIN")
 GEMINI_API_KEY_LEARNING = os.environ.get("GEMINI_API_KEY_LEARNING") or GEMINI_API_KEY_MAIN
 
-print(f"🔑 Gemini Key: {str(GEMINI_API_KEY_MAIN)[:15]}...")
+print(f"🔑 MAIN Key: {str(GEMINI_API_KEY_MAIN)[:15]}...")
+print(f"🔑 LEARNING Key: {str(GEMINI_API_KEY_LEARNING)[:15]}...")
 
+# Khởi tạo
 try:
-    genai.configure(api_key=GEMINI_API_KEY_MAIN)
-    print("✅ Khởi tạo Gemini thành công!")
+    if GEMINI_API_KEY_MAIN:
+        genai.configure(api_key=GEMINI_API_KEY_MAIN)
+        print("✅ Gemini MAIN OK!")
+    else:
+        print("⚠️ Chưa có GEMINI_API_KEY_MAIN")
 except Exception as e:
-    print(f"❌ Lỗi khởi tạo Gemini: {e}")
+    print(f"❌ Lỗi Gemini: {e}")
 
-MAIN_MODEL_NAME = "gemini-2.5-flash"
-LEARNING_MODEL_NAME = "gemini-2.5-flash-lite"
-
+# ================== SYSTEM PROMPT ==================
 MAIN_SYSTEM = """
 Bạn là Chatbot Thiên Văn thông minh, hỗ trợ học sinh sử dụng kính thiên văn trong học tập STEM.
 
@@ -52,28 +47,6 @@ Quy tắc định dạng:
 - Nếu không chắc: "Bạn nên tham khảo thêm tài liệu hoặc hỏi giáo viên nhé!"
 """
 
-_main_chat_lock = threading.Lock()
-_main_chat_history = []
-
-# ================== ARDUINO ==================
-ser = None
-try:
-    ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-    time.sleep(2.5)
-    print(f"✅ Kết nối Arduino thành công qua {SERIAL_PORT}")
-except Exception as e:
-    print(f"⚠️ Không kết nối được Arduino: {e}")
-    ser = None
-
-def _build_history_contents(history_list):
-    contents = []
-    for turn in history_list:
-        contents.append({
-            "role": turn["role"],
-            "parts": [genai.types.Part.from_text(text=p) for p in turn["parts"]]
-        })
-    return contents
-
 # ================== ROUTES ==================
 @app.route('/')
 def index():
@@ -85,16 +58,9 @@ def static_files(filename):
 
 @app.route('/command', methods=['POST'])
 def command():
-    data = request.get_json() or {}
-    cmd = data.get('cmd', '')
-    if cmd and ser:
-        try:
-            ser.write((cmd + '\n').encode())
-        except Exception as e:
-            print(f"❌ Lỗi Arduino: {e}")
     return "OK"
 
-# ----- Tab Chat chính -----
+# ----- API 1: CHAT CHÍNH (Main Key) -----
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.get_json() or {}
@@ -103,31 +69,20 @@ def chat():
         return jsonify({"response": "Bạn muốn hỏi gì về thiên văn?"})
 
     try:
-        model = genai.GenerativeModel(MAIN_MODEL_NAME)
-        contents = _build_history_contents(_main_chat_history)
-        contents.append({"role": "user", "parts": [genai.types.Part.from_text(text=user_message)]})
-
-        resp = model.generate_content(
-            contents,
-            generation_config=genai.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=1000,
-                system_instruction=MAIN_SYSTEM
-            )
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=MAIN_CHAT_SYSTEM
         )
-        reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời."
-
-        _main_chat_history.append({"role": "user", "parts": [user_message]})
-        _main_chat_history.append({"role": "model", "parts": [reply]})
-        if len(_main_chat_history) > 40:
-            del _main_chat_history[:2]
-
+        chat = model.start_chat(history=[])
+        response = chat.send_message(user_message)
+        reply = response.text.strip()
         return jsonify({"response": reply})
     except Exception as e:
         print(f"❌ Chat error: {e}")
-        return jsonify({"response": "Lỗi kết nối AI. Thử lại sau nhé!"})
+        return jsonify({"response": "Xin lỗi, AI đang gặp sự cố. Thử lại sau nhé!"})
 
-# ----- Learning Hub chat -----
+
+# ----- API 2: LEARNING HUB (Learning Key) -----
 @app.route('/learning_chat', methods=['POST'])
 def learning_chat():
     data = request.get_json() or {}
@@ -135,30 +90,27 @@ def learning_chat():
     messages = data.get('messages', [])
 
     try:
-        full_system = system_prompt + "\n\n" + LEARNING_FORMAT_RULES
-        model = genai.GenerativeModel(LEARNING_MODEL_NAME)
-
-        contents = _build_history_contents(messages[:-1])
-        last_msg = messages[-1].get('content', '')
-        contents.append({"role": "user", "parts": [genai.types.Part.from_text(text=last_msg)]})
-
-        resp = model.generate_content(
-            contents,
-            generation_config=genai.GenerationConfig(
-                temperature=0.8,
-                max_output_tokens=800,
-                system_instruction=full_system
-            )
+        full_system = LEARNING_SYSTEM + "\n\n" + system_prompt
+        
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=full_system
         )
-        reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời."
+        
+        chat = model.start_chat(history=[])
+        last_msg = messages[-1].get('content', '') if messages else "Xin chào"
+        
+        response = chat.send_message(last_msg)
+        reply = response.text.strip()
     except Exception as e:
         print(f"❌ Learning chat error: {e}")
         reply = "Xin lỗi, AI đang gặp sự cố. Thử lại nhé! 🙏"
 
     return jsonify({"reply": reply})
 
+
 if __name__ == '__main__':
     if not os.path.exists('static'):
         os.makedirs('static')
-    print("🌌 Kính Thiên Văn STEM đang chạy trên Render...")
+    print("🌌 Kính Thiên Văn STEM đang chạy...")
     app.run(host='0.0.0.0', port=5000, threaded=True)
