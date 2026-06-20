@@ -45,6 +45,22 @@
       animation: canvas-glow-pulse 4s ease-in-out infinite;
     }
 
+    /* ===== Hiệu ứng "đang soạn tin" trong Chat AI ===== */
+    @keyframes typing-dot-bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00f0ff;
+      display: inline-block;
+      animation: typing-dot-bounce 1.2s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
     /* Desktop: phóng to canvas 3D chiếm gần hết viewport, phần module học tập chìm xuống dưới (cuộn để xem) */
     @media (min-width: 769px) {
       #view-dashboard .solar-canvas-hero {
@@ -2146,6 +2162,22 @@
       `;
       chatBox.scrollTop = chatBox.scrollHeight;
 
+      // Hiện bong bóng "đang soạn tin..." trong lúc chờ AI phản hồi
+      const typingId = 'typing-' + Date.now();
+      chatBox.innerHTML += `
+        <div class="flex items-start gap-3" id="${typingId}">
+          <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-cyan-400 shrink-0"><i class="fa-solid fa-robot"></i></div>
+          <div class="bg-indigo-950/30 border border-white/5 p-3.5 rounded-2xl flex items-center gap-1.5">
+            <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+          </div>
+        </div>
+      `;
+      chatBox.scrollTop = chatBox.scrollHeight;
+      const removeTypingBubble = () => {
+        const el = document.getElementById(typingId);
+        if (el) el.remove();
+      };
+
       // Gọi API bot — backend /learning_chat yêu cầu { system_prompt, messages: [...] }
       fetch('/learning_chat', {
         method: 'POST',
@@ -2159,6 +2191,7 @@
       })
       .then(res => res.json())
       .then(data => {
+        removeTypingBubble();
         chatBox.innerHTML += `
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-cyan-400 shrink-0"><i class="fa-solid fa-robot"></i></div>
@@ -2173,6 +2206,7 @@
       .catch(err => {
         // Fallback giả lập thông minh khi không có kết nối server Flask
         setTimeout(() => {
+          removeTypingBubble();
           chatBox.innerHTML += `
             <div class="flex items-start gap-3">
               <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-cyan-400 shrink-0"><i class="fa-solid fa-robot"></i></div>
