@@ -102,8 +102,8 @@ class VideoCamera:
         return False
 
 
-camera = VideoCamera()
-threading.Thread(target=camera.update, daemon=True).start()
+# camera = VideoCamera()
+# threading.Thread(target=camera.update, daemon=True).start()
 
 
 # ================== ARDUINO ==================
