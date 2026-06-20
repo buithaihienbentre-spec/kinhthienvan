@@ -1,0 +1,3028 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔭 Kính Thiên Văn STEM - Hệ Mặt Trời 3D & Điều Khiển Thực Tế</title>
+  
+  <!-- Thư viện CSS & Fonts bên ngoài -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Các thư viện bổ trợ cho PDF, 3D Engine và Animation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+  <style>
+    /* ===== HERO 3D SECTION ENHANCEMENTS ===== */
+    @keyframes bounce-slow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .animate-bounce-slow {
+      animation: bounce-slow 2.5s ease-in-out infinite;
+    }
+
+    @keyframes hero-fade-out {
+      0% { opacity: 1; transform: translateY(0); }
+      80% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-10px); pointer-events: none; }
+    }
+    .hero-banner-hiding {
+      animation: hero-fade-out 1s ease-in-out forwards;
+    }
+
+    /* Desktop: border glow pulse cho canvas 3D */
+    @keyframes canvas-glow-pulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(99,102,241,0.15), inset 0 0 60px rgba(0,0,0,0.5); }
+      50% { box-shadow: 0 0 60px rgba(0,240,255,0.2), 0 0 20px rgba(189,0,255,0.1), inset 0 0 60px rgba(0,0,0,0.5); }
+    }
+    .solar-canvas-hero {
+      animation: canvas-glow-pulse 4s ease-in-out infinite;
+    }
+
+    /* ===== CSS VARIABLES & CHỦ ĐỀ KHÔNG GIAN CYBER ===== */
+    :root {
+      --bg: #03030c;
+      --bg-panel: rgba(10, 12, 38, 0.85);
+      --border-glow: rgba(129, 140, 248, 0.3);
+      --cyan: #00f0ff;
+      --violet: #bd00ff;
+      --magenta: #ff007f;
+      --emerald: #10b981;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --sidebar-w: 240px;
+    }
+
+    body {
+      font-family: 'Quicksand', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      overflow: hidden;
+      background-image: radial-gradient(circle at 50% 50%, #0c0d2b 0%, #03030c 100%);
+    }
+
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    /* Scrollbar phong cách tối giản */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-glow);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--cyan);
+    }
+
+    /* Hiệu ứng kính mờ Glassmorphism siêu thực */
+    .glass-panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glow);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    .glass-card {
+      background: rgba(16, 20, 54, 0.5);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Các hiệu ứng Neon Glow */
+    .glow-cyan {
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.35);
+      border-color: var(--cyan);
+    }
+    .glow-violet {
+      box-shadow: 0 0 15px rgba(189, 0, 255, 0.35);
+      border-color: var(--violet);
+    }
+    .glow-text-cyan {
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+    }
+    .glow-text-magenta {
+      text-shadow: 0 0 8px rgba(255, 0, 127, 0.6);
+    }
+
+    /* Custom Switch cho orbit & controls */
+    .switch-label {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+    }
+    .switch-label input { opacity: 0; width: 0; height: 0; }
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .3s;
+      border-radius: 34px;
+      border: 1px solid var(--border-glow);
+    }
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px; width: 14px;
+      left: 3px; bottom: 3px;
+      background-color: var(--text);
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .switch-slider {
+      background-color: rgba(189, 0, 255, 0.3);
+      border-color: var(--violet);
+    }
+    input:checked + .switch-slider:before {
+      transform: translateX(22px);
+      background-color: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    /* Animation cho Loading Screen */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.3; transform: scale(0.98); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+    .pulse-glow {
+      animation: pulse-glow 3s infinite ease-in-out;
+    }
+
+    /* ===== RESPONSIVE MOBILE ===== */
+    /* Bottom nav chỉ hiện trên mobile */
+    #mobile-bottom-nav {
+      display: none;
+    }
+
+    /* Sidebar ẩn trên mobile */
+    #desktop-sidebar {
+      display: flex;
+    }
+
+    /* Mobile header compact */
+    @media (max-width: 768px) {
+      body {
+        overflow: auto;
+      }
+
+      #desktop-sidebar {
+        display: none !important;
+      }
+
+      #mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: rgba(5, 6, 20, 0.97);
+        border-top: 1px solid rgba(99, 102, 241, 0.25);
+        backdrop-filter: blur(16px);
+        padding: 6px 4px;
+        padding-bottom: calc(6px + env(safe-area-inset-bottom));
+        gap: 0;
+        align-items: stretch;
+      }
+
+      #mobile-bottom-nav button {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 6px 2px;
+        border-radius: 10px;
+        font-size: 9px;
+        font-weight: 700;
+        color: #64748b;
+        background: transparent;
+        border: none;
+        transition: all 0.2s;
+        cursor: pointer;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        font-family: 'Quicksand', sans-serif;
+      }
+
+      #mobile-bottom-nav button i {
+        font-size: 18px;
+        margin-bottom: 1px;
+      }
+
+      #mobile-bottom-nav button.active {
+        color: #00f0ff;
+      }
+
+      #mobile-bottom-nav button.active i {
+        filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.7));
+      }
+
+      /* Main content chiếm toàn màn hình */
+      main {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100dvh;
+        overflow: visible !important;
+        padding-bottom: 80px;
+      }
+
+      /* Header mobile */
+      header {
+        height: auto !important;
+        padding: 10px 14px !important;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      header .flex.items-center.gap-4 {
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+      }
+
+      /* Ẩn status Arduino trên mobile header, hiện ở nơi khác */
+      #arduino-status-wrapper {
+        display: none;
+      }
+
+      header > div:last-child {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      header > div:last-child button {
+        flex: 1;
+        font-size: 10px;
+        padding: 8px 10px !important;
+      }
+
+      /* Quick mode text ẩn */
+      #quick-mode-text {
+        display: none;
+      }
+
+      /* View title nhỏ lại */
+      #current-view-title {
+        font-size: 11px !important;
+        letter-spacing: 0.05em !important;
+      }
+
+      /* Dashboard 3D canvas height mobile — chiếm toàn màn hình */
+      #view-dashboard .solar-canvas-hero {
+        height: calc(100dvh - 120px) !important;
+        min-height: 320px;
+        border: none !important;
+        border-bottom: 1px solid rgba(99,102,241,0.3) !important;
+        box-shadow: 0 0 50px rgba(99,102,241,0.3), inset 0 0 40px rgba(0,0,0,0.6) !important;
+      }
+
+      /* Planet info panel mobile */
+      #planet-info-panel {
+        width: calc(100vw - 24px) !important;
+        right: 12px !important;
+        top: 12px !important;
+        bottom: auto !important;
+      }
+
+      /* Grid camera view */
+      #view-camera .grid.grid-cols-1.lg\:grid-cols-3 {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Chat view chiều cao mobile */
+      #view-chat {
+        height: auto !important;
+        min-height: calc(100dvh - 160px);
+        padding: 12px !important;
+      }
+
+      #view-chat .glass-panel {
+        min-height: calc(100dvh - 200px);
+      }
+
+      #chat-messages {
+        padding: 14px !important;
+        font-size: 13px !important;
+      }
+
+      /* Chat input mobile */
+      #view-chat .p-4.bg-slate-950 {
+        padding: 10px !important;
+      }
+
+      #chat-input {
+        height: 42px;
+        font-size: 14px !important;
+      }
+
+      /* Learning hub mobile */
+      #view-learning-hub,
+      #view-camera,
+      #view-report {
+        padding: 12px !important;
+        space-y: 4 !important;
+      }
+
+      /* Learning hub grid 2 cols on mobile */
+      #lh-modules-grid,
+      #home-modules-list {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+
+      /* Report stats grid */
+      #view-report .grid.grid-cols-1.md\:grid-cols-3 {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 8px !important;
+      }
+
+      #view-report .grid .text-2xl {
+        font-size: 16px !important;
+      }
+
+      /* D-Pad panel full width */
+      #view-camera .glass-panel.p-5.rounded-3xl {
+        padding: 14px !important;
+      }
+
+      /* Slide bài học: stack dọc */
+      #lh-viewer .p-6.flex-1.flex.flex-col.md\:flex-row {
+        flex-direction: column !important;
+        padding: 14px !important;
+        gap: 14px !important;
+      }
+
+      #lh-practice-box {
+        width: 100% !important;
+      }
+
+      /* Modal size compare full */
+      #size-compare-modal > div {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        margin: 10px !important;
+      }
+
+      /* Certificate modal */
+      #lhCertModal > div {
+        width: 95vw !important;
+        max-width: 95vw !important;
+        max-height: 90dvh !important;
+        overflow-y: auto !important;
+      }
+
+      /* Suggestion cards dọc */
+      #view-dashboard .grid.grid-cols-1.md\:grid-cols-2 {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+      }
+
+      /* Bottom planet carousel */
+      .absolute.bottom-4.left-1\/2.-translate-x-1\/2 {
+        max-width: 92vw !important;
+      }
+
+      /* Speed controller full width */
+      .absolute.bottom-4.left-4.glass-panel {
+        left: 8px !important;
+        right: auto;
+        max-width: calc(50vw - 16px);
+      }
+
+      /* Overflow main container */
+      .flex-1.w-full.overflow-y-auto.relative {
+        overflow-y: visible !important;
+        overflow-x: hidden;
+      }
+
+      /* Learning hub title text */
+      #view-learning-hub h2 {
+        font-size: 15px !important;
+        line-height: 1.3 !important;
+      }
+
+      /* Report title */
+      #view-report h2 {
+        font-size: 14px !important;
+      }
+
+      #view-report .flex.justify-between.items-start {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      #view-report button.px-4.py-2\.5 {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* Quick targets 2 cols */
+      #view-camera .grid.grid-cols-2.md\:grid-cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+
+      /* Remove max heights that break mobile */
+      .h-screen { height: auto !important; }
+      .overflow-hidden { overflow: visible !important; }
+
+      /* Fix flex layout */
+      body.flex { flex-direction: row; }
+
+      /* Header view title compact */
+      .h-4.w-px { display: none; }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      /* Tablet: sidebar thu nhỏ */
+      #desktop-sidebar {
+        width: 64px !important;
+        min-width: 64px !important;
+      }
+
+      #desktop-sidebar .p-6 {
+        padding: 12px 8px !important;
+        justify-content: center;
+      }
+
+      #desktop-sidebar .p-6 > div:last-child {
+        display: none;
+      }
+
+      #desktop-sidebar nav .nav-btn span,
+      #desktop-sidebar nav .nav-btn:not(:first-child) span {
+        display: none;
+      }
+
+      #desktop-sidebar nav .nav-btn {
+        justify-content: center;
+        padding: 12px 8px !important;
+        gap: 0 !important;
+      }
+
+      #desktop-sidebar .p-4.mx-4.mb-6 {
+        display: none;
+      }
+    }
+
+    /* ============================================================
+       LEARNING HUB v2 (tv- prefixed) — Module thực hành 5-bước
+       ============================================================ */
+    .tv-tab{display:none;}.tv-tab.active{display:block;}
+    .tv-camera-feed{background:#000;border-radius:16px;overflow:hidden;border:2px solid rgba(99,179,237,.3);position:relative;}
+    .tv-camera-feed img{width:100%;display:block;max-height:360px;object-fit:cover;}
+    .tv-pantilt-controls{display:grid;grid-template-columns:repeat(3,48px);gap:6px;justify-content:center;margin-top:12px;}
+    .tv-pt-btn{width:48px;height:48px;background:rgba(99,179,237,.15);border:1px solid rgba(99,179,237,.3);border-radius:12px;color:#63b3ed;font-size:1.2rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;}
+    .tv-pt-btn:hover{background:rgba(99,179,237,.3);transform:scale(1.08);}
+    .tv-pt-btn.inactive{visibility:hidden;}
+    .tv-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:22px;}
+    .tv-h1{font-size:1.8rem;font-weight:800;color:#e2e8f0;margin:0 0 6px;}
+    .tv-sub{color:#718096;font-size:.88rem;margin:0 0 24px;}
+    .tv-label{font-size:.78rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#718096;margin-bottom:8px;}
+    .tv-h3{font-size:1.1rem;font-weight:700;color:#e2e8f0;margin:0 0 4px;}
+    .tv-text{color:#a0aec0;font-size:.9rem;line-height:1.65;}
+    .tv-xp-bar-wrap{height:8px;background:rgba(255,255,255,.1);border-radius:100px;overflow:hidden;}
+    .tv-xp-bar-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#63b3ed,#9f7aea);transition:width .6s ease;}
+    .tv-xp-flash{position:fixed;top:80px;right:24px;z-index:9999;background:linear-gradient(135deg,#f6ad55,#ed8936);color:#0b0f1a;font-weight:800;font-size:1rem;padding:10px 22px;border-radius:100px;box-shadow:0 8px 24px rgba(246,173,85,.5);animation:tvXpFlash 2.6s ease-out forwards;pointer-events:none;}
+    @keyframes tvXpFlash{0%{opacity:0;transform:translateY(20px) scale(.8)}15%{opacity:1;transform:translateY(0) scale(1.1)}30%{transform:scale(1)}70%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+    .tv-module-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+    .tv-module-card{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);border-radius:20px;padding:20px;cursor:pointer;transition:all .25s;}
+    .tv-module-card:hover{border-color:rgba(99,179,237,.4);background:rgba(99,179,237,.07);transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.35);}
+    .tv-module-card.completed{border-color:rgba(72,187,120,.4);background:rgba(72,187,120,.06);}
+    .tv-progress-bar{height:6px;background:rgba(255,255,255,.1);border-radius:100px;overflow:hidden;margin-top:12px;}
+    .tv-progress-fill{height:100%;border-radius:100px;transition:width .5s ease;}
+    .tv-stage-wizard{display:flex;align-items:center;margin-bottom:28px;overflow-x:auto;padding-bottom:6px;}
+    .tv-stage-step{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:60px;position:relative;}
+    .tv-stage-step:not(:last-child)::after{content:'';position:absolute;top:17px;left:50%;width:100%;height:2px;background:rgba(255,255,255,.1);z-index:0;}
+    .tv-stage-step.done:not(:last-child)::after{background:#63b3ed;}
+    .tv-stage-dot{width:34px;height:34px;border-radius:50%;z-index:1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#718096;}
+    .tv-stage-step.done .tv-stage-dot{background:#63b3ed;border-color:#63b3ed;color:#0b0f1a;}
+    .tv-stage-step.active .tv-stage-dot{background:#f6ad55;border-color:#f6ad55;color:#0b0f1a;box-shadow:0 0 0 4px rgba(246,173,85,.25);}
+    .tv-stage-label{font-size:.6rem;color:#718096;text-align:center;max-width:66px;line-height:1.2;}
+    .tv-stage-step.done .tv-stage-label,.tv-stage-step.active .tv-stage-label{color:#e2e8f0;font-weight:600;}
+    .tv-stage-xp{font-size:.58rem;font-weight:700;color:#f6ad55;background:rgba(246,173,85,.15);border-radius:100px;padding:1px 7px;}
+    .tv-stage-step.done .tv-stage-xp{color:#48bb78;background:rgba(72,187,120,.15);}
+    .tv-stage-card{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);border-radius:24px;padding:26px;}
+    .tv-quiz-option{width:100%;text-align:left;padding:13px 16px;margin-bottom:9px;border:1.5px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(255,255,255,.04);color:#e2e8f0;font-size:.92rem;cursor:pointer;transition:all .2s;}
+    .tv-quiz-option:hover{border-color:#63b3ed;background:rgba(99,179,237,.1);}
+    .tv-quiz-option.correct{background:rgba(72,187,120,.2)!important;border-color:#48bb78!important;color:#9ae6b4!important;pointer-events:none;}
+    .tv-quiz-option.wrong{background:rgba(245,101,101,.18)!important;border-color:#fc8181!important;color:#feb2b2!important;pointer-events:none;}
+    .tv-quiz-option.disabled{pointer-events:none;opacity:.8;}
+    .tv-chat-window{height:320px;overflow-y:auto;padding:16px;background:rgba(0,0,0,.3);border-radius:16px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth;border:1px solid rgba(255,255,255,.07);}
+    .tv-bubble-user{background:linear-gradient(135deg,#63b3ed,#4299e1);color:#0b0f1a;border-radius:18px 18px 4px 18px;padding:10px 15px;max-width:80%;word-wrap:break-word;font-size:.9rem;line-height:1.5;align-self:flex-end;}
+    .tv-bubble-ai{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:18px 18px 18px 4px;padding:10px 15px;max-width:82%;word-wrap:break-word;color:#e2e8f0;font-size:.9rem;line-height:1.6;align-self:flex-start;}
+    .tv-typing-bubble{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:12px 16px;display:inline-flex;gap:5px;align-items:center;}
+    .tv-typing-dot{width:7px;height:7px;background:#63b3ed;border-radius:50%;animation:tvTyping 1.2s infinite;}
+    .tv-typing-dot:nth-child(2){animation-delay:.2s}.tv-typing-dot:nth-child(3){animation-delay:.4s}
+    @keyframes tvTyping{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-6px);opacity:1}}
+    .tv-quick-btn{background:rgba(99,179,237,.1);border:1px solid rgba(99,179,237,.25);color:#63b3ed;border-radius:100px;padding:5px 13px;font-size:.8rem;cursor:pointer;transition:all .2s;white-space:nowrap;}
+    .tv-quick-btn:hover{background:rgba(99,179,237,.22);}
+    .tv-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+    .tv-table th{background:rgba(99,179,237,.12);color:#63b3ed;padding:9px 13px;text-align:left;border-bottom:1.5px solid rgba(99,179,237,.2);}
+    .tv-table td{padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.05);color:#e2e8f0;}
+    .tv-table tr:hover td{background:rgba(255,255,255,.03);}
+    .btn-primary{background:linear-gradient(135deg,#63b3ed,#4299e1);color:#0b0f1a;border:none;border-radius:14px;padding:11px 22px;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(99,179,237,.35);}
+    .btn-secondary{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#e2e8f0;border-radius:14px;padding:11px 22px;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;}
+    .btn-secondary:hover{background:rgba(255,255,255,.13);}
+    .btn-record{background:linear-gradient(135deg,#9f7aea,#805ad5);color:#fff;border:none;border-radius:14px;padding:11px 22px;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;}
+    .btn-record:hover{transform:scale(1.03);box-shadow:0 8px 20px rgba(159,122,234,.35);}
+    .tv-rate-btn{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.15);border-radius:12px;padding:8px 13px;font-size:.83rem;cursor:pointer;transition:all .2s;color:#e2e8f0;}
+    .tv-rate-btn:hover{border-color:#f6ad55;background:rgba(246,173,85,.12);}
+    .tv-rate-btn.selected{background:rgba(246,173,85,.2);border-color:#f6ad55;color:#f6ad55;font-weight:700;}
+    .tv-nav-footer{display:flex;gap:12px;padding:16px 0 0;border-top:1px solid rgba(255,255,255,.08);flex-wrap:wrap;}
+    #tvReportModal{display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);overflow-y:auto;padding:24px 16px;}
+    .tvrep-wrap{background:#161b27;border-radius:24px;width:100%;max-width:740px;margin:0 auto;box-shadow:0 32px 80px rgba(0,0,0,.6);overflow:hidden;border:1px solid rgba(99,179,237,.25);}
+    .tvrep-header{background:linear-gradient(135deg,#2b6cb0,#553c9a);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .tvrep-header h2{margin:0;font-size:1rem;font-weight:800;color:#fff;}
+    .tvrep-body{padding:22px 24px;display:flex;flex-direction:column;gap:16px;}
+    .tvrep-section{border-radius:16px;padding:18px;border:1px solid;}
+    .tvrep-section-title{font-size:.7rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+    .tvrep-s-info{background:rgba(99,179,237,.08);border-color:rgba(99,179,237,.25);} .tvrep-s-info .tvrep-section-title{color:#63b3ed;}
+    .tvrep-s-know{background:rgba(159,122,234,.08);border-color:rgba(159,122,234,.25);} .tvrep-s-know .tvrep-section-title{color:#9f7aea;}
+    .tvrep-s-diff{background:rgba(245,101,101,.07);border-color:rgba(245,101,101,.25);} .tvrep-s-diff .tvrep-section-title{color:#fc8181;}
+    .tvrep-s-eval{background:rgba(246,173,85,.08);border-color:rgba(246,173,85,.25);} .tvrep-s-eval .tvrep-section-title{color:#f6ad55;}
+    .tvrep-s-ai{background:rgba(72,187,120,.08);border-color:rgba(72,187,120,.25);} .tvrep-s-ai .tvrep-section-title{color:#48bb78;}
+    .tvrep-input{width:100%;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 13px;font-size:.9rem;outline:none;background:rgba(255,255,255,.06);color:#e2e8f0;transition:border .2s;box-sizing:border-box;font-family:inherit;}
+    .tvrep-input:focus{border-color:#63b3ed;box-shadow:0 0 0 3px rgba(99,179,237,.15);}
+    textarea.tvrep-input{resize:vertical;line-height:1.6;}
+    .tvrep-label{font-size:.8rem;font-weight:500;color:#a0aec0;margin-bottom:6px;}
+    .tvrep-footer{display:flex;gap:10px;flex-wrap:wrap;padding:16px 24px 24px;border-top:1px solid rgba(255,255,255,.1);}
+    .tvrep-ai-btn{width:100%;background:linear-gradient(135deg,#48bb78,#38a169);border:none;border-radius:14px;padding:14px;color:#fff;font-size:.875rem;font-weight:700;cursor:pointer;margin-bottom:14px;transition:all .2s;box-shadow:0 4px 14px rgba(72,187,120,.3);}
+    .tvrep-ai-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(72,187,120,.45);}
+    #tvRepAiResult{display:none;background:rgba(255,255,255,.05);border:1px solid rgba(72,187,120,.3);border-radius:12px;padding:16px;font-size:.875rem;line-height:1.8;color:#e2e8f0;white-space:pre-wrap;min-height:60px;}
+    #tvRepPdfBtn{background:linear-gradient(135deg,#63b3ed,#4299e1);color:#0b0f1a;border:none;border-radius:14px;padding:12px 24px;font-weight:700;font-size:.87rem;cursor:pointer;transition:all .2s;min-width:200px;}
+    #tvRepPdfBtn:disabled{opacity:.5;cursor:not-allowed;}
+    .tvrep-close-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:7px 14px;color:rgba(255,255,255,.8);cursor:pointer;font-size:.82rem;font-weight:600;}
+    .tv-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:100px;font-size:.78rem;font-weight:700;}
+    .tv-badge-gold{background:rgba(246,173,85,.2);color:#f6ad55;border:1px solid rgba(246,173,85,.3);}
+    .tv-badge-green{background:rgba(72,187,120,.2);color:#48bb78;border:1px solid rgba(72,187,120,.3);}
+    .tv-badge-blue{background:rgba(99,179,237,.2);color:#63b3ed;border:1px solid rgba(99,179,237,.3);}
+    #tvConfirmModal{display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;}
+    .tvconfirm-wrap{background:#161b27;border:1px solid rgba(99,179,237,.3);border-radius:24px;padding:28px;max-width:480px;width:100%;box-shadow:0 30px 60px rgba(0,0,0,.6);}
+    #tvCertModal{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;}
+    .tv-ib{border-radius:16px;padding:16px;margin-bottom:12px;}
+    .tv-ib.blue{background:rgba(99,179,237,.1);border:1px solid rgba(99,179,237,.2);}
+    .tv-ib.purple{background:rgba(159,122,234,.1);border:1px solid rgba(159,122,234,.2);}
+    .tv-ib.amber{background:rgba(246,173,85,.1);border:1px solid rgba(246,173,85,.2);}
+    .tv-ib.green{background:rgba(72,187,120,.1);border:1px solid rgba(72,187,120,.2);}
+    .tv-ib h4{margin:0 0 8px;font-size:1rem;font-weight:700;}
+    .tv-ib.blue h4{color:#63b3ed;} .tv-ib.purple h4{color:#9f7aea;} .tv-ib.amber h4{color:#f6ad55;} .tv-ib.green h4{color:#48bb78;}
+    .tv-star{font-size:1.6rem;cursor:pointer;opacity:.3;transition:all .15s;}
+    .tv-star:hover{transform:scale(1.15);} .tv-star.on{opacity:1;}
+    .tv-ta{width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.1);border-radius:12px;padding:10px;color:#e2e8f0;font-size:.88rem;resize:vertical;font-family:inherit;}
+    .tv-select{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:12px;padding:10px;color:#e2e8f0;font-size:.9rem;margin-bottom:10px;}
+    @media(max-width:768px){ .tv-module-grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden text-slate-200">
+
+  <!-- ==================== SIDEBAR TRÁI (NAVIGATION) ==================== -->
+  <aside id="desktop-sidebar" class="w-[240px] h-full flex flex-col bg-[#050614] border-r border-indigo-950/40 shrink-0 z-40 relative">
+    <!-- Brand Title -->
+    <div class="p-6 border-b border-indigo-950/40 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-fuchsia-600 flex items-center justify-center text-white glow-cyan">
+        <i class="fa-solid fa-satellite-dish text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-orbitron font-extrabold text-sm tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">STEM OBSERVER</h1>
+        <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Kính Thiên Văn 3D</p>
+      </div>
+    </div>
+
+    <!-- Danh sách Menu Navigation -->
+    <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+      <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-950/40 to-fuchsia-950/20 text-cyan-400 border border-indigo-500/30">
+        <i class="fa-solid fa-globe-asia text-lg text-cyan-400"></i>
+        <span>Hệ Mặt Trời 3D</span>
+      </button>
+
+      <button onclick="switchView('camera')" id="nav-camera" class="nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left font-semibold text-sm text-slate-400 transition-all duration-200 hover:bg-indigo-950/30 hover:text-white">
+        <i class="fa-solid fa-circle-play text-lg"></i>
+        <span>Kính & Động Cơ</span>
+      </button>
+
+      <button onclick="switchView('learning-hub')" id="nav-learning-hub" class="nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left font-semibold text-sm text-slate-400 transition-all duration-200 hover:bg-indigo-950/30 hover:text-white">
+        <i class="fa-solid fa-graduation-cap text-lg"></i>
+        <span>Học Tập STEM</span>
+      </button>
+
+      <button onclick="switchView('chat')" id="nav-chat" class="nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left font-semibold text-sm text-slate-400 transition-all duration-200 hover:bg-indigo-950/30 hover:text-white">
+        <i class="fa-solid fa-user-astronaut text-lg"></i>
+        <span>Trợ Lý Thiên Văn</span>
+      </button>
+
+      <button onclick="switchView('report')" id="nav-report" class="nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left font-semibold text-sm text-slate-400 transition-all duration-200 hover:bg-indigo-950/30 hover:text-white">
+        <i class="fa-solid fa-chart-line text-lg"></i>
+        <span>Báo Cáo Học Tập</span>
+      </button>
+    </nav>
+
+    <!-- Thống kê XP và Danh hiệu ở dưới -->
+    <div class="p-4 mx-4 mb-6 rounded-2xl glass-panel border border-indigo-500/20">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-slate-400">Tiến trình Học</span>
+        <span class="text-xs font-bold text-cyan-400" id="user-level">Cấp độ 1</span>
+      </div>
+      <div class="w-full bg-slate-900/80 rounded-full h-2 mb-3 overflow-hidden border border-white/5">
+        <div id="user-xp-bar" class="bg-gradient-to-r from-cyan-400 to-fuchsia-500 h-full transition-all duration-500" style="width: 25%"></div>
+      </div>
+      <div class="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+        <span id="user-xp-text">25 / 100 XP</span>
+        <button onclick="lhShowCertificate()" class="text-fuchsia-400 hover:text-fuchsia-300 transition-colors uppercase tracking-wider"><i class="fa-solid fa-award mr-1"></i> Chứng chỉ</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ==================== KHU VỰC NỘI DUNG CHÍNH (MAIN VIEWPORT) ==================== -->
+  <main class="flex-1 h-full flex flex-col overflow-hidden relative z-10">
+    
+    <!-- Top Header -->
+    <header class="h-16 border-b border-indigo-950/40 px-6 flex items-center justify-between shrink-0 glass-panel z-20">
+      <div class="flex items-center gap-4">
+        <span class="text-sm font-semibold text-slate-400 uppercase tracking-widest font-orbitron" id="current-view-title">Hệ Mặt Trời 3D Tương Tác</span>
+        <span class="h-4 w-px bg-slate-800"></span>
+        <!-- Arduino Connection Status -->
+        <div id="arduino-status-wrapper" class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" id="arduino-pulse"></span>
+          <span class="text-xs text-slate-400 font-semibold" id="arduino-status">Chưa kết nối Arduino (COM8)</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Nút Chuyển đổi nhanh Chế độ 3D <=> Kính thiên văn -->
+        <button onclick="toggleQuickMode()" class="px-4 py-2 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-xs font-bold text-cyan-400 hover:bg-indigo-900/80 hover:border-cyan-400 transition-all flex items-center gap-2 glow-cyan">
+          <i class="fa-solid fa-shuffle"></i>
+          <span id="quick-mode-text">Chuyển sang Kính Quan Sát</span>
+        </button>
+
+        <button onclick="connectArduino()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-xs font-bold hover:brightness-110 transition-all flex items-center gap-1.5 shadow-lg">
+          <i class="fa-solid fa-plug"></i> Kết nối Kính
+        </button>
+      </div>
+    </header>
+
+    <!-- Khu vực chuyển đổi giữa các View -->
+    <div class="flex-1 w-full overflow-y-auto relative bg-[#020207]">
+
+      <!-- ==================== VIEW 1: DASHBOARD (3D SOLAR SYSTEM) ==================== -->
+      <section id="view-dashboard" class="view-content w-full h-full flex flex-col active">
+        
+        <!-- Canvas 3D Space Block -->
+        <div class="relative w-full h-[85vh] bg-black border-b border-indigo-500/40 overflow-hidden solar-canvas-hero" style="box-shadow: 0 0 40px rgba(99,102,241,0.2), inset 0 0 60px rgba(0,0,0,0.5);">
+          
+          <!-- Hero Banner: chỉ hiện khi mới load, tự ẩn sau 4 giây -->
+          <div id="hero-3d-banner" class="absolute top-0 left-0 right-0 z-25 flex justify-center pt-4 pointer-events-none">
+            <div class="flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-cyan-400/40 shadow-[0_0_20px_rgba(0,240,255,0.25)] animate-bounce-slow">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+              <span class="font-orbitron font-bold text-xs text-cyan-300 tracking-widest uppercase">Hệ Mặt Trời 3D Trực Tiếp — Chạm để Khám Phá</span>
+            </div>
+          </div>
+
+          <!-- Loading Screen của Canvas 3D -->
+          <div id="loader-screen" class="absolute inset-0 bg-slate-950/95 z-30 flex flex-col items-center justify-center transition-all duration-1000">
+            <div class="pulse-glow flex flex-col items-center">
+              <i class="fa-solid fa-space-shuttle text-fuchsia-500 text-5xl mb-4 rotate-[-45deg]"></i>
+              <h2 class="font-orbitron font-extrabold text-2xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-400 to-fuchsia-400 mb-2">KHỞI ĐỘNG VŨ TRỤ</h2>
+              <p class="text-slate-400 text-sm font-semibold mb-6">Đang vẽ lập trình không gian mô phỏng...</p>
+            </div>
+            <div class="w-64 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-indigo-500/20 mb-8">
+              <div class="bg-gradient-to-r from-cyan-400 to-fuchsia-500 h-full animate-pulse" style="width: 100%"></div>
+            </div>
+            <button onclick="startCosmos()" class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-sm font-bold tracking-widest font-orbitron hover:brightness-110 transition-all shadow-[0_0_25px_rgba(139,92,246,0.5)]">
+              BẮT ĐẦU KHÁM PHÁ <i class="fa-solid fa-rocket ml-2"></i>
+            </button>
+          </div>
+
+          <!-- Web Audio Synth space music loader indicator -->
+          <audio id="bg-sound" loop class="hidden"></audio>
+
+          <!-- 3D Canvas chính -->
+          <canvas id="solar-canvas" class="w-full h-full block"></canvas>
+
+          <!-- Overlay Controls Panel (Góc trên bên trái Canvas) -->
+          <div class="absolute top-4 left-4 flex flex-col gap-2 z-20">
+            <!-- Audio controls -->
+            <button id="btn-audio" onclick="toggleSpaceAudio()" class="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors border border-white/5" title="Bật/Tắt Nhạc Nền">
+              <i class="fa-solid fa-volume-xmark text-sm" id="icon-audio"></i>
+            </button>
+            <!-- Orbit lines switcher -->
+            <button onclick="toggleOrbits()" class="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-cyan-400 hover:text-white transition-colors border border-cyan-500/30" title="Bật/Tắt Đường Quỹ Đạo">
+              <i class="fa-solid fa-circle-notch text-sm"></i>
+            </button>
+            <!-- Toggle Auto-rotate -->
+            <button onclick="toggleAutoRotate()" class="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors border border-white/5" id="btn-autorotate" title="Tự động xoay camera">
+              <i class="fa-solid fa-arrows-spin text-sm"></i>
+            </button>
+            <!-- Size Comparison Button -->
+            <button onclick="openSizeCompareModal()" class="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-fuchsia-400 transition-colors border border-white/5" title="So sánh kích thước các hành tinh">
+              <i class="fa-solid fa-scale-balanced text-sm"></i>
+            </button>
+            <!-- Reset View -->
+            <button onclick="resetSpaceView()" class="w-10 h-10 rounded-xl glass-panel flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors border border-white/5" title="Đặt lại góc nhìn">
+              <i class="fa-solid fa-arrows-to-eye text-sm"></i>
+            </button>
+          </div>
+
+          <!-- Timeline Speed Controller (Góc dưới bên trái Canvas) -->
+          <div class="absolute bottom-4 left-4 glass-panel px-4 py-3 rounded-2xl z-20 border border-indigo-500/20 max-w-xs">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs text-slate-400 font-bold uppercase tracking-wider"><i class="fa-solid fa-gauge mr-1.5 text-fuchsia-500"></i>Tốc độ thời gian</span>
+              <span class="text-xs font-bold text-cyan-400 font-orbitron" id="speed-label">1x</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <button onclick="adjustTimeSpeed(-0.5)" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-minus"></i></button>
+              <input type="range" id="time-speed-slider" min="0" max="10" step="0.1" value="1" class="w-24 accent-fuchsia-600 h-1 rounded-lg cursor-pointer bg-slate-800" oninput="onTimeSpeedSlider(this.value)">
+              <button onclick="adjustTimeSpeed(0.5)" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-plus"></i></button>
+            </div>
+          </div>
+
+          <!-- Info Panel Trượt bên phải (Khi người dùng click vào hành tinh) -->
+          <div id="planet-info-panel" class="absolute top-4 right-4 bottom-4 w-80 rounded-2xl glass-panel border border-indigo-500/20 p-5 flex flex-col z-20 transition-all duration-500 translate-x-[110%] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <h3 id="planet-name-vi" class="font-orbitron font-extrabold text-xl text-cyan-400 uppercase tracking-wider">Trái Đất</h3>
+                <p id="planet-name-en" class="text-xs text-slate-400 italic">Earth (Hành tinh xanh)</p>
+              </div>
+              <button onclick="closePlanetPanel()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+
+            <!-- Stats grid -->
+            <div class="grid grid-cols-2 gap-2 mb-4">
+              <div class="bg-indigo-950/40 p-2 rounded-xl border border-white/5">
+                <span class="text-[9px] text-slate-400 font-bold block">KHOẢNG CÁCH</span>
+                <span id="planet-dist" class="text-xs font-extrabold text-white font-orbitron">1.0 AU</span>
+              </div>
+              <div class="bg-indigo-950/40 p-2 rounded-xl border border-white/5">
+                <span class="text-[9px] text-slate-400 font-bold block">ĐƯỜNG KÍNH</span>
+                <span id="planet-diam" class="text-xs font-extrabold text-white font-orbitron">12,742 km</span>
+              </div>
+              <div class="bg-indigo-950/40 p-2 rounded-xl border border-white/5">
+                <span class="text-[9px] text-slate-400 font-bold block">NHIỆT ĐỘ TRUNG BÌNH</span>
+                <span id="planet-temp" class="text-xs font-extrabold text-white font-orbitron">15 °C</span>
+              </div>
+              <div class="bg-indigo-950/40 p-2 rounded-xl border border-white/5">
+                <span class="text-[9px] text-slate-400 font-bold block">CHU KỲ QUỸ ĐẠO</span>
+                <span id="planet-year" class="text-xs font-extrabold text-white font-orbitron">365 ngày</span>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <h4 class="text-xs font-bold text-fuchsia-400 mb-1 border-b border-white/5 pb-1 uppercase tracking-wider">Đặc điểm nổi bật</h4>
+              <p id="planet-desc" class="text-xs text-slate-300 leading-relaxed">
+                Hành tinh duy nhất được biết đến có sự sống trong Hệ Mặt Trời. Nước lỏng bao phủ 70% bề mặt của nó.
+              </p>
+            </div>
+
+            <div class="mb-5 bg-indigo-950/20 p-3 rounded-xl border border-fuchsia-500/20 text-xs">
+              <span class="font-bold text-slate-300 block mb-1"><i class="fa-solid fa-lightbulb text-yellow-400 mr-1.5"></i> Góc thực hành STEM</span>
+              <p id="planet-stem-tip" class="text-slate-400 leading-snug">
+                Sử dụng kính thiên văn STEM để quan sát bề mặt Mặt Trăng, lập bản đồ địa hình đồi núi thực tế.
+              </p>
+            </div>
+
+            <!-- Các nút hành động liên kết sâu -->
+            <div class="mt-auto space-y-2 pt-4 border-t border-white/5">
+              <button id="btn-deep-learn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-xs font-bold hover:brightness-110 transition-all flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-graduation-cap"></i> Học chi tiết Module
+              </button>
+              <button id="btn-deep-align" class="w-full py-2.5 rounded-xl bg-indigo-950 border border-cyan-500/30 text-cyan-400 text-xs font-bold hover:bg-cyan-950/30 transition-all flex items-center justify-center gap-1.5 glow-cyan">
+                <i class="fa-solid fa-crosshairs"></i> Xoay Kính Quan Sát mục tiêu
+              </button>
+            </div>
+          </div>
+
+          <!-- Mobile: gợi ý cuộn xuống xem nội dung -->
+          <div id="scroll-hint-mobile" class="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 pointer-events-none md:hidden">
+            <span class="text-[10px] font-orbitron font-bold text-slate-400 uppercase tracking-widest">Cuộn xuống</span>
+            <i class="fa-solid fa-chevron-down text-slate-500 animate-bounce text-xs"></i>
+          </div>
+          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-slate-950/80 px-4 py-2 rounded-full border border-white/10 overflow-x-auto max-w-[80vw] z-10 scrollbar-none">
+            <button onclick="carouselSelect('sun')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-slate-950 hover:brightness-115 transition-all shrink-0">Mặt Trời</button>
+            <button onclick="carouselSelect('mercury')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Sao Thủy</button>
+            <button onclick="carouselSelect('venus')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Sao Kim</button>
+            <button onclick="carouselSelect('earth')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Trái Đất</button>
+            <button onclick="carouselSelect('moon')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Mặt Trăng</button>
+            <button onclick="carouselSelect('mars')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Sao Hỏa</button>
+            <button onclick="carouselSelect('jupiter')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Sao Mộc</button>
+            <button onclick="carouselSelect('saturn')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Sao Thổ</button>
+            <button onclick="carouselSelect('uranus')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Thiên Vương</button>
+            <button onclick="carouselSelect('neptune')" class="carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0">Hải Vương</button>
+          </div>
+        </div>
+
+        <!-- Section dưới Canvas: Khám phá Thực tế & Module -->
+        <div class="p-6 space-y-6 max-w-6xl mx-auto w-full">
+          
+          <!-- KHÁM PHÁ MODULE HỌC TẬP -->
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-orbitron font-extrabold text-sm tracking-widest text-fuchsia-400 uppercase"><i class="fa-solid fa-graduation-cap mr-2"></i>Module Học Tập STEM Nổi Bật</h3>
+              <button onclick="switchView('learning-hub')" class="text-xs font-bold text-cyan-400 hover:underline">Xem tất cả <i class="fa-solid fa-arrow-right ml-1"></i></button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="home-modules-list">
+              <!-- Render tự động bằng JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ==================== VIEW 2: CAMERA & ĐIỀU KHIỂN KÍNH ==================== -->
+      <section id="view-camera" class="view-content hidden p-6 space-y-6 max-w-6xl mx-auto w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Column 1 & 2: Video Stream và Alignment -->
+          <div class="lg:col-span-2 space-y-6">
+            <!-- Camera Screen -->
+            <div class="glass-panel rounded-3xl overflow-hidden border border-indigo-500/20 relative">
+              <div class="px-5 py-3 border-b border-indigo-950/40 flex justify-between items-center bg-slate-900/60">
+                <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5"><i class="fa-solid fa-video animate-pulse text-red-500"></i>Luồng camera kính thiên văn</span>
+                <span class="text-[10px] bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full font-bold">1080p • Live Feed</span>
+              </div>
+              <div class="relative w-full aspect-video bg-black flex items-center justify-center">
+                <!-- Stream Image -->
+                <img id="telescope-stream" src="/video_feed" alt="Webcam Telescope Live" onerror="this.src='https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=800&q=80'; this.style.opacity='0.6';" class="w-full h-full object-cover">
+                
+                <!-- Crosshair Target Overlay -->
+                <div class="absolute inset-0 pointer-events-none border border-white/5 flex items-center justify-center">
+                  <div class="w-24 h-24 rounded-full border border-cyan-400/30 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-full border border-dashed border-cyan-400/50 flex items-center justify-center">
+                      <div class="w-2 h-2 rounded-full bg-cyan-400/70"></div>
+                    </div>
+                  </div>
+                  <div class="absolute h-full w-px bg-cyan-400/15"></div>
+                  <div class="absolute w-full h-px bg-cyan-400/15"></div>
+                </div>
+
+                <!-- Camera Overlays / Watermark -->
+                <div class="absolute bottom-4 left-4 text-xs font-bold font-orbitron bg-black/60 px-3 py-1.5 rounded-lg border border-white/5 text-slate-300">
+                  AZ: 184.2° | ALT: 45.1°
+                </div>
+                <div class="absolute bottom-4 right-4 text-xs font-bold font-orbitron bg-black/60 px-3 py-1.5 rounded-lg border border-white/5 text-slate-300" id="current-time-hud">
+                  19:30:00
+                </div>
+              </div>
+
+              <!-- Camera controls & filters -->
+              <div class="p-4 flex gap-2 overflow-x-auto bg-slate-950/60 border-t border-indigo-950/40">
+                <button onclick="capturePhoto()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition-all flex items-center gap-1.5 shrink-0"><i class="fa-solid fa-camera"></i> Chụp ảnh</button>
+                <button onclick="applyFilter('normal')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 shrink-0">Ảnh thường</button>
+                <button onclick="applyFilter('night')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-green-400 shrink-0"><i class="fa-solid fa-eye-low-vision mr-1"></i> Hồng ngoại</button>
+                <button onclick="applyFilter('high-contrast')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-cyan-400 shrink-0"><i class="fa-solid fa-circle-half-stroke mr-1"></i> Lọc sắc nét</button>
+              </div>
+            </div>
+
+            <!-- Auto-Target Celestial object tracking panel -->
+            <div class="glass-panel p-5 rounded-3xl border border-indigo-500/20">
+              <h3 class="font-orbitron font-extrabold text-sm text-cyan-400 uppercase tracking-widest mb-3"><i class="fa-solid fa-globe mr-2"></i>Chỉ định mục tiêu cơ sở dữ liệu</h3>
+              <p class="text-xs text-slate-400 mb-4">Chọn một vật thể vũ trụ nổi bật. Động cơ bước Arduino sẽ quay kính căn chỉnh theo toạ độ tính toán sẵn.</p>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button onclick="quickTargetTelescope('moon')" class="p-3 rounded-xl bg-slate-900 border border-white/5 text-left hover:border-cyan-400 transition-all">
+                  <span class="text-[10px] text-fuchsia-400 font-bold block">PHASE: 48%</span>
+                  <span class="text-xs font-bold text-white block">Mặt Trăng</span>
+                </button>
+                <button onclick="quickTargetTelescope('jupiter')" class="p-3 rounded-xl bg-slate-900 border border-white/5 text-left hover:border-cyan-400 transition-all">
+                  <span class="text-[10px] text-amber-400 font-bold block">MAG: -2.1</span>
+                  <span class="text-xs font-bold text-white block">Sao Mộc</span>
+                </button>
+                <button onclick="quickTargetTelescope('saturn')" class="p-3 rounded-xl bg-slate-900 border border-white/5 text-left hover:border-cyan-400 transition-all">
+                  <span class="text-[10px] text-yellow-400 font-bold block">RINGS VISIBLE</span>
+                  <span class="text-xs font-bold text-white block">Sao Thổ</span>
+                </button>
+                <button onclick="quickTargetTelescope('mars')" class="p-3 rounded-xl bg-slate-900 border border-white/5 text-left hover:border-cyan-400 transition-all">
+                  <span class="text-[10px] text-red-400 font-bold block">MAG: +1.2</span>
+                  <span class="text-xs font-bold text-white block">Sao Hỏa</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3: Điều khiển động cơ Arduino (D-Pad) -->
+          <div class="space-y-6">
+            <div class="glass-panel p-5 rounded-3xl border border-indigo-500/20 flex flex-col justify-between h-full">
+              <div>
+                <h3 class="font-orbitron font-extrabold text-sm text-fuchsia-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-gamepad mr-2"></i>Hệ thống Servo D-Pad</h3>
+                <p class="text-xs text-slate-400 mb-6 leading-relaxed">Điều hướng thủ công vị trí của Kính thiên văn STEM (Động cơ bước trục ngang Azimuth và trục dọc Altitude).</p>
+
+                <!-- D-Pad Control Visual -->
+                <div class="flex justify-center mb-8">
+                  <div class="relative w-44 h-44 bg-slate-950/80 rounded-full border-2 border-indigo-500/20 flex items-center justify-center p-3">
+                    <!-- Nút UP -->
+                    <button onclick="sendArduinoControl('up')" class="absolute top-2 w-10 h-10 rounded-xl bg-indigo-900/60 border border-indigo-500/40 flex items-center justify-center hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-400 transition-all"><i class="fa-solid fa-chevron-up text-lg"></i></button>
+                    <!-- Nút LEFT -->
+                    <button onclick="sendArduinoControl('left')" class="absolute left-2 w-10 h-10 rounded-xl bg-indigo-900/60 border border-indigo-500/40 flex items-center justify-center hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-400 transition-all"><i class="fa-solid fa-chevron-left text-lg"></i></button>
+                    <!-- Nút STOP / CENTER -->
+                    <button onclick="sendArduinoControl('stop')" class="w-12 h-12 rounded-full bg-red-600 border border-red-500 text-white flex items-center justify-center hover:brightness-110 transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)]"><i class="fa-solid fa-circle-stop text-lg"></i></button>
+                    <!-- Nút RIGHT -->
+                    <button onclick="sendArduinoControl('right')" class="absolute right-2 w-10 h-10 rounded-xl bg-indigo-900/60 border border-indigo-500/40 flex items-center justify-center hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-400 transition-all"><i class="fa-solid fa-chevron-right text-lg"></i></button>
+                    <!-- Nút DOWN -->
+                    <button onclick="sendArduinoControl('down')" class="absolute bottom-2 w-10 h-10 rounded-xl bg-indigo-900/60 border border-indigo-500/40 flex items-center justify-center hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-400 transition-all"><i class="fa-solid fa-chevron-down text-lg"></i></button>
+                  </div>
+                </div>
+
+                <!-- Step speed adjustments -->
+                <div class="space-y-4 mb-6">
+                  <div>
+                    <div class="flex justify-between items-center text-xs mb-1">
+                      <span class="font-bold text-slate-300">Góc quay / Bước (Step Size)</span>
+                      <span class="font-orbitron font-bold text-cyan-400" id="step-size-lbl">5°</span>
+                    </div>
+                    <input type="range" id="step-size-slider" min="1" max="15" step="1" value="5" class="w-full accent-cyan-400 h-1 rounded-lg bg-slate-800 cursor-pointer" oninput="document.getElementById('step-size-lbl').innerText = this.value + '°'">
+                  </div>
+
+                  <div>
+                    <div class="flex justify-between items-center text-xs mb-1">
+                      <span class="font-bold text-slate-300">Tốc độ quay động cơ</span>
+                      <span class="font-orbitron font-bold text-fuchsia-400">Trung bình</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Terminal log -->
+              <div class="bg-slate-950 border border-white/5 p-3 rounded-2xl">
+                <span class="text-[10px] text-fuchsia-400 font-bold block mb-1 uppercase tracking-wider font-orbitron"><i class="fa-solid fa-terminal mr-1"></i>Nhật ký truyền tin Arduino</span>
+                <div class="h-24 overflow-y-auto text-[11px] font-mono text-cyan-400/80 space-y-1" id="serial-terminal">
+                  <div>[Hệ thống] Đang nghe tại cổng COM8...</div>
+                  <div>[Hệ thống] Trình kết nối đã sẵn sàng.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ==================== VIEW 3: LEARNING HUB v2 ==================== -->
+      <section id="view-learning-hub" class="view-content hidden p-6 space-y-6 max-w-6xl mx-auto w-full">
+        <div id="tvDashboard">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:28px;">
+            <div>
+              <h1 class="tv-h1">🌌 Learning Hub</h1>
+              <p class="tv-sub">Khám phá vũ trụ từng bước – học thiên văn qua thực hành với kính thật</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <div style="font-size:1.25rem;font-weight:800;color:#f6ad55;" id="tvXpDisplay">0 XP</div>
+                <span id="tvStreakBadge" style="display:none;background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;font-weight:700;font-size:.78rem;padding:4px 13px;border-radius:100px;">🔥 0 ngày</span>
+                <button id="tvCertBtn" onclick="tvShowCertificate()" style="display:none;background:linear-gradient(135deg,#f6ad55,#ed8936);color:#0b0f1a;border:none;border-radius:14px;padding:9px 18px;font-weight:700;font-size:.82rem;cursor:pointer;">🏆 Chứng nhận</button>
+              </div>
+              <div style="width:220px;"><div class="tv-xp-bar-wrap"><div class="tv-xp-bar-fill" id="tvXpBar" style="width:0%"></div></div></div>
+              <div id="tvBadgesDisplay" style="font-size:1.1rem;min-height:22px;"></div>
+            </div>
+          </div>
+          <div class="tv-module-grid" id="tvModuleGrid"></div>
+        </div>
+
+        <div id="tvModuleView" style="display:none;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+            <button onclick="tvBackToDashboard()" class="btn-secondary" style="padding:9px 16px;font-size:.85rem;">← Về Dashboard</button>
+            <div>
+              <div id="tvModuleViewTitle" class="tv-h3"></div>
+              <div id="tvModuleViewDesc" style="font-size:.8rem;color:#718096;"></div>
+            </div>
+          </div>
+          <div class="tv-stage-wizard" id="tvStageWizard"></div>
+          <div id="tvStageContent"></div>
+          <div class="tv-nav-footer">
+            <button id="tvBtnPrev" onclick="tvPrevStage()" class="btn-secondary" style="display:none;">← Quay lại</button>
+            <button id="tvBtnNext" onclick="tvNextStage()" class="btn-primary" style="margin-left:auto;">Tiếp tục →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TV REPORT MODAL -->
+      <div id="tvReportModal" onclick="if(event.target===this)tvCloseReportModal()">
+        <div class="tvrep-wrap">
+          <div class="tvrep-header">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;background:rgba(255,255,255,.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;">📋</div>
+              <div><h2 style="margin:0;">Báo Cáo Học Tập Thiên Văn</h2><div style="font-size:.75rem;color:rgba(255,255,255,.7);margin-top:2px;" id="tvRepSubtitle"></div></div>
+            </div>
+            <button class="tvrep-close-btn" onclick="tvCloseReportModal()">✕ Đóng</button>
+          </div>
+          <div class="tvrep-body">
+            <div class="tvrep-section tvrep-s-info">
+              <div class="tvrep-section-title">👤 Thông Tin Học Sinh</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div><div class="tvrep-label">Họ và tên</div><input id="tvRepName" type="text" placeholder="Nhập họ tên..." class="tvrep-input"></div>
+                <div><div class="tvrep-label">Lớp / Nhóm</div><input id="tvRepClass" type="text" placeholder="VD: 11A2 – Nhóm Thiên Văn..." class="tvrep-input"></div>
+              </div>
+              <div style="margin-top:10px;font-size:.8rem;color:#718096;">Ngày: <strong><span id="tvRepDate"></span></strong></div>
+            </div>
+            <div class="tvrep-section tvrep-s-know">
+              <div class="tvrep-section-title">📚 Kiến Thức Tiếp Thu</div>
+              <div class="tvrep-label">Mô tả những gì em đã học được</div>
+              <textarea id="tvRepLearned" rows="3" placeholder="VD: Hôm nay em hiểu được 8 pha Mặt Trăng..." class="tvrep-input"></textarea>
+            </div>
+            <div class="tvrep-section tvrep-s-diff">
+              <div class="tvrep-section-title">❓ Điểm Còn Khó Hiểu</div>
+              <textarea id="tvRepDiffNote" rows="2" placeholder="Mô tả phần em còn thắc mắc..." class="tvrep-input" style="border-color:rgba(245,101,101,.3);"></textarea>
+            </div>
+            <div class="tvrep-section tvrep-s-know">
+              <div class="tvrep-section-title">💡 Bài Học & Ứng Dụng</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div><div class="tvrep-label">Bài học quan trọng nhất</div><textarea id="tvRepLesson" rows="2" placeholder="VD: Để thấy rõ Vành đai Sao Thổ cần..." class="tvrep-input"></textarea></div>
+                <div><div class="tvrep-label">Liên hệ thực tế</div><textarea id="tvRepRealworld" rows="2" placeholder="VD: Em sẽ ứng dụng để xác định phương hướng..." class="tvrep-input"></textarea></div>
+              </div>
+            </div>
+            <div class="tvrep-section tvrep-s-eval">
+              <div class="tvrep-section-title">⭐ Tự Đánh Giá</div>
+              <div style="margin-bottom:14px;">
+                <div class="tvrep-label">Tự chấm điểm buổi học (1–5 sao)</div>
+                <div id="tvRepStarRow" style="display:flex;gap:8px;margin-top:6px;">
+                  <span onclick="tvRepSetStars(1)" class="tv-star">⭐</span><span onclick="tvRepSetStars(2)" class="tv-star">⭐</span><span onclick="tvRepSetStars(3)" class="tv-star">⭐</span><span onclick="tvRepSetStars(4)" class="tv-star">⭐</span><span onclick="tvRepSetStars(5)" class="tv-star">⭐</span>
+                </div>
+              </div>
+              <div><div class="tvrep-label">Góp ý / Đề xuất</div><textarea id="tvRepSuggestion" rows="2" placeholder="VD: Mong được quan sát Sao Mộc qua kính thật..." class="tvrep-input" style="border-color:rgba(246,173,85,.3);"></textarea></div>
+            </div>
+            <div id="tvRepObsData"></div>
+            <div class="tvrep-section tvrep-s-ai">
+              <div class="tvrep-section-title">🤖 AI Tổng Hợp Báo Cáo</div>
+              <button class="tvrep-ai-btn" onclick="tvGenerateReportAI()">✨ TẠO BÁO CÁO AI CHI TIẾT</button>
+              <div id="tvRepAiResult"></div>
+            </div>
+          </div>
+          <div class="tvrep-footer">
+            <button id="tvRepPdfBtn" onclick="tvExportPDF()" disabled>📄 TẢI XUỐNG PDF</button>
+            <button style="background:rgba(255,255,255,.08);color:#a0aec0;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 24px;font-size:.87rem;font-weight:600;cursor:pointer;" onclick="tvCloseReportModal()">← Đóng</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TV CONFIRM MODAL -->
+      <div id="tvConfirmModal">
+        <div class="tvconfirm-wrap">
+          <h3 id="tvConfirmTitle" style="color:#e2e8f0;font-size:1.1rem;margin:0 0 14px;"></h3>
+          <div id="tvConfirmBody" style="color:#a0aec0;font-size:.9rem;margin-bottom:20px;"></div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button id="tvConfirmCancelBtn" class="btn-secondary" style="padding:10px 20px;font-size:.88rem;"></button>
+            <button id="tvConfirmOkBtn" class="btn-primary" style="padding:10px 20px;font-size:.88rem;"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TV CERTIFICATE MODAL -->
+      <div id="tvCertModal" onclick="if(event.target===this)tvCloseCertificate()">
+        <div style="background:#161b27;border:2px solid #63b3ed;border-radius:28px;padding:40px;max-width:500px;width:100%;text-align:center;box-shadow:0 30px 60px rgba(0,0,0,.7);">
+          <div style="font-size:4rem;margin-bottom:12px;">🏅</div>
+          <h2 style="font-size:1.5rem;font-weight:800;color:#63b3ed;margin-bottom:6px;">Chứng Nhận Hoàn Thành</h2>
+          <p style="color:#718096;font-size:.9rem;margin-bottom:20px;">Khoá học Thiên Văn STEM – Kính thiên văn thông minh</p>
+          <div style="background:rgba(99,179,237,.1);border:1px solid rgba(99,179,237,.2);border-radius:16px;padding:20px;margin-bottom:20px;">
+            <p style="font-weight:700;color:#63b3ed;font-size:1.05rem;margin-bottom:8px;">🔭 Xác nhận hoàn thành toàn bộ 5 module</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px;" id="tvCertBadges"></div>
+            <p style="font-weight:800;color:#f6ad55;font-size:1.2rem;" id="tvCertXp"></p>
+          </div>
+          <p style="font-size:.8rem;color:#4a5568;margin-bottom:20px;" id="tvCertDate"></p>
+          <div style="display:flex;gap:12px;justify-content:center;">
+            <button onclick="window.print()" style="background:#63b3ed;color:#0b0f1a;border:none;padding:12px 24px;border-radius:16px;font-weight:700;cursor:pointer;">🖨️ In / Lưu PDF</button>
+            <button onclick="tvCloseCertificate()" style="background:rgba(255,255,255,.08);color:#a0aec0;border:1px solid rgba(255,255,255,.15);padding:12px 24px;border-radius:16px;font-weight:600;cursor:pointer;">Đóng</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ==================== VIEW 4: AI CHATBOT HỖ TRỢ ==================== -->
+      <section id="view-chat" class="view-content hidden p-6 space-y-6 max-w-4xl mx-auto w-full flex flex-col h-[82vh]">
+        <div class="flex-1 glass-panel rounded-3xl border border-indigo-500/20 overflow-hidden flex flex-col">
+          <!-- Chat Header -->
+          <div class="px-6 py-4 border-b border-indigo-950/40 flex items-center justify-between bg-slate-900/40">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white"><i class="fa-solid fa-user-astronaut"></i></div>
+              <div>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Trợ Lý AI Thiên Văn STEM</h3>
+                <p class="text-[10px] text-emerald-400 flex items-center gap-1 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Trực tuyến • Sẵn sàng giải đáp</p>
+              </div>
+            </div>
+            <button onclick="clearChat()" class="text-xs text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-trash-can mr-1"></i> Xóa hội thoại</button>
+          </div>
+
+          <!-- Message History -->
+          <div id="chat-messages" class="flex-1 p-6 overflow-y-auto space-y-4 font-medium text-sm text-slate-200">
+            <!-- Bot message -->
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-cyan-400 shrink-0"><i class="fa-solid fa-robot"></i></div>
+              <div class="bg-indigo-950/30 border border-white/5 p-3 rounded-2xl max-w-lg leading-relaxed">
+                Xin chào nhà thiên văn học tương lai! 🔭 Mình là Trợ lý AI Thiên văn STEM. Bạn muốn đặt câu hỏi gì về Hệ Mặt Trời, Kính thiên văn, hay cần hướng dẫn lập trình điều khiển Arduino?
+              </div>
+            </div>
+          </div>
+
+          <!-- Prompt Suggestions -->
+          <div class="p-3 bg-slate-950/40 border-t border-indigo-950/30 flex gap-2 overflow-x-auto">
+            <button onclick="useQuickPrompt('Giải thích vì sao có hiện tượng nhật thực?')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 text-xs text-slate-300 border border-white/5 shrink-0 transition-all">☀️ Tại sao có Nhật thực?</button>
+            <button onclick="useQuickPrompt('Kính thiên văn khúc xạ hoạt động như thế nào?')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 text-xs text-slate-300 border border-white/5 shrink-0 transition-all">🔭 Kính khúc xạ hoạt động ra sao?</button>
+            <button onclick="useQuickPrompt('Làm sao để hiệu chuẩn động cơ bước quay kính thiên văn?')" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 text-xs text-slate-300 border border-white/5 shrink-0 transition-all">⚙️ Lập trình động cơ bước kính?</button>
+          </div>
+
+          <!-- Message Input area -->
+          <div class="p-4 bg-slate-950 border-t border-indigo-950/40 flex gap-3">
+            <input type="text" id="chat-input" placeholder="Gửi câu hỏi của bạn tại đây..." class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-cyan-400 text-white" onkeydown="if(event.key === 'Enter') sendChatMessage()">
+            <button onclick="sendChatMessage()" class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition-all"><i class="fa-solid fa-paper-plane"></i></button>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ==================== VIEW 5: BÁO CÁO HỌC TẬP ==================== -->
+      <section id="view-report" class="view-content hidden p-6 space-y-6 max-w-4xl mx-auto w-full">
+        <div class="glass-panel p-6 rounded-3xl border border-indigo-500/20 space-y-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="font-orbitron font-extrabold text-xl text-white tracking-wide uppercase"><i class="fa-solid fa-chart-line mr-2 text-fuchsia-500"></i>Báo Cáo Học Tập Cá Nhân Hóa AI</h2>
+              <p class="text-xs text-slate-400 mt-1">Hệ thống phân tích lịch sử trả lời câu hỏi và thực hành kính thiên văn của bạn để xây dựng lộ trình học bằng mô hình AI.</p>
+            </div>
+            <button onclick="generateAIReport()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-xs font-bold hover:brightness-110 transition-all shadow-md">
+              <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i> Tạo báo cáo mới bằng AI
+            </button>
+          </div>
+
+          <!-- Thống kê tổng hợp -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-indigo-950/30 border border-white/5 p-4 rounded-2xl">
+              <span class="text-[10px] text-cyan-400 font-bold block mb-1 uppercase tracking-wider">ĐIỂM KINH NGHIỆM</span>
+              <span class="text-2xl font-bold font-orbitron text-white" id="report-xp">25 XP</span>
+            </div>
+            <div class="bg-indigo-950/30 border border-white/5 p-4 rounded-2xl">
+              <span class="text-[10px] text-fuchsia-400 font-bold block mb-1 uppercase tracking-wider">HỌC PHẦN HOÀN THÀNH</span>
+              <span class="text-2xl font-bold font-orbitron text-white" id="report-completed">0 / 4</span>
+            </div>
+            <div class="bg-indigo-950/30 border border-white/5 p-4 rounded-2xl">
+              <span class="text-[10px] text-emerald-400 font-bold block mb-1 uppercase tracking-wider">THỰC HÀNH KÍNH THIÊN VĂN</span>
+              <span class="text-2xl font-bold font-orbitron text-white" id="report-telescope-actions">0 Lần</span>
+            </div>
+          </div>
+
+          <!-- Khu vực chứa văn bản Báo cáo -->
+          <div class="border border-white/5 p-5 rounded-2xl bg-slate-950/50 min-h-[30vh]">
+            <div id="report-output" class="text-xs text-slate-300 leading-relaxed space-y-3">
+              <p class="italic text-slate-400 text-center pt-8">Nhấn nút "Tạo báo cáo mới bằng AI" để phân tích hiệu suất học tập và nhận chứng chỉ khuyến nghị của bạn.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== MODAL 1: SO SÁNH KÍCH THƯỚC HÀNH TINH ==================== -->
+  <div id="size-compare-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-2xl rounded-3xl border border-indigo-500/20 overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      <!-- Modal header -->
+      <div class="p-6 border-b border-indigo-950/40 flex justify-between items-center bg-slate-900/60">
+        <h3 class="font-orbitron font-extrabold text-base text-cyan-400 uppercase tracking-widest"><i class="fa-solid fa-scale-balanced mr-2"></i>So Sánh Kích Thước Các Hành Tinh</h3>
+        <button onclick="closeSizeCompareModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Modal content -->
+      <div class="p-6 overflow-y-auto space-y-4">
+        <p class="text-xs text-slate-400 leading-relaxed mb-4">Các dải biểu thị tỉ lệ đường kính xích đạo của các thiên thể trong Hệ Mặt Trời so với Trái Đất làm gốc (Trái Đất = 1).</p>
+        
+        <div class="space-y-3" id="size-bars-container">
+          <!-- Render tự động các thanh so sánh hành tinh -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==================== MODAL 2: CHỨNG CHỈ HOÀN THÀNH STEM ==================== -->
+  <div id="lhCertModal" class="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-panel w-full max-w-3xl rounded-3xl border border-fuchsia-500/30 overflow-hidden shadow-2xl flex flex-col">
+      <!-- Certification Frame for downloading -->
+      <div class="p-8 bg-gradient-to-tr from-slate-950 via-indigo-950/30 to-slate-950 border border-fuchsia-500/20 rounded-2xl m-6 text-center space-y-6 relative" id="cert-canvas-area">
+        <!-- Badge Watermark -->
+        <div class="absolute inset-0 pointer-events-none opacity-5 flex items-center justify-center">
+          <i class="fa-solid fa-satellite-dish text-[15rem]"></i>
+        </div>
+
+        <div>
+          <span class="text-[10px] bg-fuchsia-500/20 text-fuchsia-400 px-3 py-1 rounded-full font-bold uppercase tracking-widest font-orbitron">Chứng Nhận Vinh Danh</span>
+          <h2 class="text-2xl font-orbitron font-extrabold text-white tracking-widest mt-3">NHÀ THIÊN VĂN HỌC STEM XUẤT SẮC</h2>
+          <p class="text-xs text-slate-400 italic mt-1">Chứng nhận cấp bởi Chương trình Thiên Văn Thực Hành STEM</p>
+        </div>
+
+        <div class="h-px bg-gradient-to-r from-transparent via-fuchsia-500 to-transparent w-full"></div>
+
+        <div class="space-y-2">
+          <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Kính tặng học sinh</p>
+          <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-400 font-orbitron">BẠN HỌC SINH TÀI NĂNG</h3>
+          <p class="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed mt-2">Đã hoàn thành xuất sắc các module huấn luyện về vũ trụ, khám phá chuyển động 3D của Hệ Mặt Trời, và thành thạo kỹ thuật điều hướng Kính thiên văn bằng động cơ bước Arduino.</p>
+        </div>
+
+        <div class="flex justify-around items-center pt-4 text-left max-w-md mx-auto text-xs text-slate-400 font-semibold">
+          <div>
+            <span class="block text-[9px] font-bold uppercase text-slate-500">ĐIỂM TÍCH LŨY</span>
+            <span class="text-sm font-bold text-cyan-400 font-orbitron" id="lhCertXp">25 XP</span>
+          </div>
+          <div>
+            <span class="block text-[9px] font-bold uppercase text-slate-500">DANH HIỆU</span>
+            <span class="text-sm font-bold text-fuchsia-400">Chinh phục Vũ Trụ</span>
+          </div>
+          <div>
+            <span class="block text-[9px] font-bold uppercase text-slate-500">NGÀY CẤP</span>
+            <span class="text-sm font-bold text-white" id="lhCertDate">--/--/----</span>
+          </div>
+        </div>
+
+        <div class="flex justify-center gap-1.5 mt-3" id="lhCertBadges">
+          <!-- Render badges -->
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="px-8 py-4 bg-slate-900/60 border-t border-indigo-950/40 flex justify-end gap-3">
+        <button onclick="lhCloseCertificate()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold">Đóng</button>
+        <button onclick="downloadCertificate()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-xs font-bold text-white hover:brightness-110 transition-all flex items-center gap-1.5"><i class="fa-solid fa-download"></i> Tải chứng chỉ (PDF)</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==================== LOGIC JAVASCRIPT ĐIỀU KHIỂN CHÍNH ==================== -->
+  <script>
+    // ===== Cấu hình dữ liệu và trạng thái hệ thống =====
+    let isCosmosStarted = false;
+    let currentView = 'dashboard';
+    let arduinoConnected = false;
+    let activeFilter = 'normal';
+    
+    // User Stats
+    let userXp = 25;
+    const levelThresh = 100;
+
+    // Dữ liệu Vật lý 3D các thiên thể
+    const planetData = {
+      sun: { nameVi: 'Mặt Trời', nameEn: 'The Sun', size: 5, color: 0xffaa00, dist: 0, diam: '1,392,700 km', temp: '5,500 °C', year: 'Không có', desc: 'Ngôi sao trung tâm của Hệ Mặt Trời, chiếm 99.86% khối lượng của toàn hệ thống.', stemTip: 'Mặt Trời là nguồn cung cấp năng lượng và ánh sáng khổng lồ. Hãy điều chỉnh bộ lọc ánh sáng mặt trời chuyên dụng trên kính để chống làm hỏng mắt khi quan sát.' },
+      mercury: { nameVi: 'Sao Thủy', nameEn: 'Mercury', size: 0.5, color: 0x888888, dist: 8, diam: '4,879 km', temp: '167 °C', year: '88 ngày', desc: 'Hành tinh nhỏ nhất và gần Mặt Trời nhất. Bề mặt gồ ghề đầy hố va chạm như Mặt Trăng.', stemTip: 'Sao Thủy quay rất nhanh quanh Mặt Trời. Chu kỳ quỹ đạo của nó chỉ vỏn vẹn 88 ngày Trái Đất.' },
+      venus: { nameVi: 'Sao Kim', nameEn: 'Venus', size: 1.0, color: 0xe3bb76, dist: 12, diam: '12,104 km', temp: '464 °C', year: '225 ngày', desc: 'Hành tinh nóng nhất do hiệu ứng nhà kính dày đặc của khí CO2. Sáng rực rỡ thứ nhì bầu trời đêm.', stemTip: 'Bầu khí quyển đậm đặc của Sao Kim giữ nhiệt độ siêu cao, đủ sức nung chảy cả chì!' },
+      earth: { nameVi: 'Trái Đất', nameEn: 'Earth', size: 1.1, color: 0x2b82c9, dist: 17, diam: '12,742 km', temp: '15 °C', year: '365 ngày', desc: 'Hành tinh duy nhất có sự sống, phủ đầy đại dương nước lỏng và bầu khí quyển giàu oxi.', stemTip: 'Mặt trăng là vệ tinh duy nhất quay quanh Trái đất với chu kỳ đồng bộ 27.3 ngày.' },
+      moon: { nameVi: 'Mặt Trăng', nameEn: 'The Moon', size: 0.35, color: 0xcccccc, dist: 19.5, diam: '3,474 km', temp: '-20 °C', year: '27.3 ngày', desc: 'Vệ tinh tự nhiên duy nhất của Trái Đất, giữ vai trò kiểm soát thủy triều và ổn định trục tự quay.', stemTip: 'Sử dụng kính thiên văn STEM nhắm trúng các hố crater đồi núi của Mặt trăng để vẽ lại bản đồ.' },
+      mars: { nameVi: 'Sao Hỏa', nameEn: 'Mars', size: 0.7, color: 0xc1440e, dist: 24, diam: '6,779 km', temp: '-62 °C', year: '687 ngày', desc: 'Hành tinh Đỏ giàu oxit sắt. Có hai vệ tinh tự nhiên rất nhỏ là Phobos và Deimos.', stemTip: 'Núi lửa Olympus Mons trên Sao Hỏa cao gấp 3 lần đỉnh núi Everest của Trái Đất!' },
+      jupiter: { nameVi: 'Sao Mộc', nameEn: 'Jupiter', size: 2.2, color: 0xd8ca9d, dist: 31, diam: '139,820 km', temp: '-108 °C', year: '12 năm', desc: 'Hành tinh khí khổng lồ lớn nhất, có vết đỏ lớn khổng lồ là một cơn bão kéo dài hàng thế kỷ.', stemTip: 'Hệ vệ tinh Galileo của Sao Mộc gồm 4 vệ tinh lớn có thể dễ dàng nhìn thấy bằng kính thiên văn tự chế.' },
+      saturn: { nameVi: 'Sao Thổ', nameEn: 'Saturn', size: 1.8, color: 0xe2bf7d, dist: 39, diam: '116,460 km', temp: '-139 °C', year: '29 năm', desc: 'Hành tinh có hệ vành đai băng lấp lánh kỳ vĩ và mỏng nổi bật nhất dải Ngân Hà.', stemTip: 'Thử tìm kiếm và phân biệt Vành Đai Cassini trên Sao Thổ bằng cảm biến thấu kính ngắm.' },
+      uranus: { nameVi: 'Thiên Vương Tinh', nameEn: 'Uranus', size: 1.4, color: 0x4b70dd, dist: 46, diam: '50,724 km', temp: '-197 °C', year: '84 năm', desc: 'Hành tinh khí băng độc đáo quay nghiêng gần như song song với mặt phẳng hoàng đạo.', stemTip: 'Lớp băng mêtan trong khí quyển hấp thụ ánh sáng đỏ, tạo cho Thiên Vương tinh sắc xanh lục đặc biệt.' },
+      neptune: { nameVi: 'Hải Vương Tinh', nameEn: 'Neptune', size: 1.35, color: 0x274687, dist: 52, diam: '49,244 km', temp: '-201 °C', year: '165 năm', desc: 'Hành tinh xa nhất và lạnh giá nhất của Hệ Mặt Trời, hứng chịu những cơn cuồng phong vũ bão.', stemTip: 'Cần một động cơ Arduino quay kính chính xác tối đa để nhắm bắn định vị Hải Vương tinh siêu nhỏ bé này.' }
+    };
+
+    // Dữ liệu Modules Học tập STEM
+    const LH_MODULES = [
+      {
+        id: 'earth-moon',
+        title: 'Mặt Trăng & Nhật Thực',
+        badge: '🌕',
+        desc: 'Học về chu kỳ trăng khuyết, hiện tượng nguyệt thực và cách hiệu chỉnh kính ngắm Mặt Trăng.',
+        xp: 25,
+        target: 'moon',
+        slides: [
+          {
+            title: 'Mặt Trăng & Hệ Trái Đất - Mặt Trăng',
+            text: 'Mặt Trăng là thiên thể gần chúng ta nhất. Sự tự quay quanh trục đồng bộ với chu kỳ quay quanh Trái Đất khiến chúng ta luôn chỉ nhìn thấy một nửa bề mặt Mặt Trăng. Vùng ranh giới sáng tối (Terminator) là địa điểm lý tưởng để quan sát các hố va chạm và dãy núi bóng dài.',
+            pracTitle: 'Nhắm bắn Kính ngắm',
+            pracDesc: 'Nhấp điều hướng động cơ để di chuyển thấu kính hướng vào trung tâm miệng núi lửa Copernicus nổi tiếng.',
+            pracAction: `<button onclick="completeStepAndAddXp(5)" class="w-full py-2 bg-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-500 transition-all">🎯 Định vị hố va chạm (+5 XP)</button>`
+          },
+          {
+            title: 'Hiện Tượng Nhật Thực & Nguyệt Thực',
+            text: 'Nhật thực xảy ra khi Mặt Trăng đi qua giữa Trái Đất và Mặt Trời, che khuất một phần hoặc toàn bộ đĩa mặt trời. Nguyệt thực xảy ra khi Trái Đất che khuất ánh sáng Mặt Trời chiếu tới Mặt Trăng, khiến nó có màu đỏ sẫm đặc biệt.',
+            pracTitle: 'Quan sát Nhật Thực',
+            pracDesc: 'Gắn kính lọc Mặt Trời (Solar Filter) bảo vệ mắt trước khi điều động động cơ nâng ống kính lên góc cao Azimuth.',
+            pracAction: `<button onclick="completeStepAndAddXp(10)" class="w-full py-2 bg-amber-600 rounded-xl font-bold text-xs hover:bg-amber-500 transition-all">🛰️ Gắn kính lọc mặt trời (+10 XP)</button>`
+          },
+          {
+            title: 'Kiểm tra nhanh học phần',
+            text: 'Hãy trả lời câu hỏi sau để kiểm duyệt kết thúc module: Tại sao chúng ta luôn chỉ thấy một mặt của Mặt Trăng từ Trái Đất?',
+            pracTitle: 'Trắc nghiệm nhanh',
+            pracDesc: 'Chọn đáp án chính xác nhất.',
+            pracAction: `
+              <div class="space-y-1.5 w-full">
+                <button onclick="lhSubmitAnswer(true, 10)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 hover:border-cyan-400 text-[11px] transition-all">A. Do chu kỳ tự quay bằng chu kỳ quay quanh Trái Đất</button>
+                <button onclick="lhSubmitAnswer(false, 0)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 hover:border-red-400 text-[11px] transition-all">B. Do Mặt Trăng không tự quay quanh trục</button>
+                <button onclick="lhSubmitAnswer(false, 0)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 hover:border-red-400 text-[11px] transition-all">C. Do ánh sáng mặt trời che khuất</button>
+              </div>
+            `
+          }
+        ]
+      },
+      {
+        id: 'solar-wonders',
+        title: 'Kỳ Quan Hệ Mặt Trời',
+        badge: '🪐',
+        desc: 'Khám phá hành tinh Đỏ Sao Hỏa và hành tinh khí lớn nhất Sao Mộc.',
+        xp: 25,
+        target: 'jupiter',
+        slides: [
+          {
+            title: 'Bão Khổng Lồ Sao Mộc (Jupiter)',
+            text: 'Sao Mộc là người bảo hộ của Trái Đất nhờ lực hấp dẫn siêu mạnh hút sạch các mảnh vỡ thiên thạch. Vết Đỏ Lớn (Great Red Spot) là cơn bão khổng lồ có kích thước rộng hơn cả Trái Đất, tồn tại ít nhất 350 năm qua.',
+            pracTitle: 'Vệ tinh Galileo',
+            pracDesc: 'Sử dụng thấu kính zoom quang học cao để tìm kiếm 4 hạt ngọc lấp lánh xếp thành đường thẳng xung quanh Sao Mộc.',
+            pracAction: `<button onclick="completeStepAndAddXp(10)" class="w-full py-2 bg-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-500 transition-all">🔭 Zoom thấu kính (+10 XP)</button>`
+          },
+          {
+            title: 'Trắc nghiệm Sao Mộc',
+            text: 'Vết Đỏ Lớn trên Sao Mộc thực chất là hiện tượng gì?',
+            pracTitle: 'Câu hỏi trắc nghiệm',
+            pracDesc: 'Suy luận từ bài học.',
+            pracAction: `
+              <div class="space-y-1.5 w-full">
+                <button onclick="lhSubmitAnswer(false, 0)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 text-[11px]">A. Một ngọn núi lửa khổng lồ</button>
+                <button onclick="lhSubmitAnswer(true, 15)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 hover:border-cyan-400 text-[11px]">B. Cơn bão lốc xoáy khổng lồ</button>
+                <button onclick="lhSubmitAnswer(false, 0)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 text-[11px]">C. Sự phản chiếu ánh sáng từ vành đai</button>
+              </div>
+            `
+          }
+        ]
+      },
+      {
+        id: 'optics-telescope',
+        title: 'Quang Học Kính Thiên Văn',
+        badge: '🔭',
+        desc: 'Nguyên lý hội tụ ánh sáng và cách chế tạo động cơ bám mục tiêu tự động.',
+        xp: 30,
+        target: 'saturn',
+        slides: [
+          {
+            title: 'Kính Thiên Văn Khúc Xạ & Phản Xạ',
+            text: 'Kính khúc xạ sử dụng thấu kính thủy tinh để hội tụ ánh sáng, trong khi kính phản xạ sử dụng gương cầu lõm. Cả hai hệ đều cần thấu kính ngắm (eyepiece) để phóng đại hình ảnh nhận được.',
+            pracTitle: 'Điều chỉnh tiêu cự',
+            pracDesc: 'Di chuyển thanh trượt lấy nét (focuser) của kính thiên văn STEM để khử mờ quang sai.',
+            pracAction: `<button onclick="completeStepAndAddXp(15)" class="w-full py-2 bg-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-500 transition-all">⚙️ Lấy nét quang học (+15 XP)</button>`
+          },
+          {
+            title: 'Câu hỏi quang học',
+            text: 'Loại kính thiên văn nào sử dụng hệ thống gương cầu/parabol để hội tụ ánh sáng ánh sao?',
+            pracTitle: 'Trắc nghiệm quang học',
+            pracDesc: 'Chọn loại kính thích hợp.',
+            pracAction: `
+              <div class="space-y-1.5 w-full">
+                <button onclick="lhSubmitAnswer(false, 0)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 text-[11px]">A. Kính khúc xạ</button>
+                <button onclick="lhSubmitAnswer(true, 15)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 hover:border-cyan-400 text-[11px]">B. Kính phản xạ</button>
+                <button onclick="lhSubmitAnswer(false, 0)" class="w-full text-left p-2.5 rounded-xl bg-slate-900 border border-white/5 text-[11px]">C. Kính điện sóng vô tuyến</button>
+              </div>
+            `
+          }
+        ]
+      },
+      {
+        id: 'constellations',
+        title: 'Chòm Sao & Định Vị',
+        badge: '🌌',
+        desc: 'Đọc bản đồ sao, tìm kiếm sao Bắc Cực và hiệu chuẩn trục kính.',
+        xp: 25,
+        target: 'earth',
+        slides: [
+          {
+            title: 'Tìm Kiếm Sao Bắc Cực (Polaris)',
+            text: 'Sao Bắc Cực nằm gần như thẳng hàng với trục quay của Trái Đất nên giữ nguyên vị trí cố định trên bầu trời đêm. Đây là chìa khóa vàng để hiệu chuẩn trục quay của động cơ bước kính thiên văn.',
+            pracTitle: 'Căn chỉnh trục động cơ',
+            pracDesc: 'Xoay trục kính bám sát sao Polaris để căn chỉnh chuẩn la bàn số điện tử.',
+            pracAction: `<button onclick="completeStepAndAddXp(25)" class="w-full py-2 bg-gradient-to-r from-cyan-500 to-indigo-600 rounded-xl font-bold text-xs hover:brightness-110 transition-all">🎯 Căn chuẩn trục Polaris (+25 XP)</button>`
+          }
+        ]
+      }
+    ];
+
+    // ===== 1. KHỞI CHẠY 3D SOLAR SYSTEM (THREE.JS) =====
+    let scene, camera, renderer, controls;
+    let sunMesh, starField;
+    let planets = {};
+    let selectedPlanetId = 'sun';
+    let isAutoRotating = true;
+    let showOrbitLines = true;
+    let timeSpeed = 1.0;
+
+    // Các tham số tỷ lệ để hiển thị đẹp mắt trên màn hình máy tính
+    const scaleFactors = {
+      orbitSpeed: 0.1,
+      rotationSpeed: 0.15,
+      distance: 2.8,
+      size: 0.85
+    };
+
+    function startCosmos() {
+      const loader = document.getElementById('loader-screen');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 1000);
+      }
+      isCosmosStarted = true;
+      init3D();
+      // Bật nhạc nền nếu chưa bật
+      toggleSpaceAudio();
+    }
+
+    function init3D() {
+      const container = document.getElementById('view-dashboard');
+      const canvas = document.getElementById('solar-canvas');
+      const rect = canvas.getBoundingClientRect();
+
+      // Scene
+      scene = new THREE.Scene();
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(60, rect.width / rect.height, 0.1, 1000);
+      camera.position.set(0, 30, 48);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(rect.width, rect.height);
+
+      // OrbitControls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxDistance = 180;
+      controls.minDistance = 6;
+
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0x222244);
+      scene.add(ambientLight);
+
+      // PointLight (Đặt tại Mặt Trời)
+      const sunLight = new THREE.PointLight(0xffffff, 2, 250);
+      scene.add(sunLight);
+
+      // Tạo nền sao trời lung linh
+      createStars();
+
+      // Tạo Mặt Trời
+      const sunGeo = new THREE.SphereGeometry(3.5, 32, 32);
+      const sunMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+      sunMesh = new THREE.Mesh(sunGeo, sunMat);
+      scene.add(sunMesh);
+
+      // Tạo các hành tinh và quỹ đạo
+      for (const key in planetData) {
+        if (key === 'sun') continue;
+        createPlanet(key, planetData[key]);
+      }
+
+      // Raycaster để bắt sự kiện click chuột
+      window.addEventListener('click', onCanvasClick);
+      window.addEventListener('resize', onWindowResize);
+
+      // Khởi động vòng lặp Animation Loop
+      animate();
+    }
+
+    function createStars() {
+      const starsGeo = new THREE.BufferGeometry();
+      const starsCount = 2000;
+      const positions = new Float32Array(starsCount * 3);
+
+      for (let i = 0; i < starsCount * 3; i++) {
+        positions[i] = (Math.random() - 0.5) * 500;
+      }
+
+      starsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const starsMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.25,
+        transparent: true,
+        opacity: 0.8
+      });
+
+      starField = new THREE.Points(starsGeo, starsMat);
+      scene.add(starField);
+    }
+
+    function createPlanet(id, data) {
+      const orbitRadius = data.dist * scaleFactors.distance;
+      const sizeRadius = data.size * scaleFactors.size;
+
+      // 1. Tạo Đường vẽ quỹ đạo (Orbit Line)
+      const curve = new THREE.EllipseCurve(0, 0, orbitRadius, orbitRadius);
+      const points = curve.getPoints(100);
+      const orbitGeo = new THREE.BufferGeometry().setFromPoints(
+        points.map(p => new THREE.Vector3(p.x, 0, p.y))
+      );
+      const orbitMat = new THREE.LineBasicMaterial({
+        color: 0x4f46e5,
+        transparent: true,
+        opacity: 0.22
+      });
+      const orbit = new THREE.Line(orbitGeo, orbitMat);
+      scene.add(orbit);
+
+      // 2. Tạo Group và Mesh Hành tinh
+      const pGroup = new THREE.Group();
+      scene.add(pGroup);
+
+      const sphereGeo = new THREE.SphereGeometry(sizeRadius, 32, 32);
+      const sphereMat = new THREE.MeshStandardMaterial({
+        color: data.color,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+      const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+      pGroup.add(mesh);
+
+      // Lưu trữ trạng thái hoạt ảnh vào object
+      planets[id] = {
+        group: pGroup,
+        mesh: mesh,
+        orbit: orbit,
+        radius: orbitRadius,
+        angle: Math.random() * Math.PI * 2,
+        speed: (1 / orbitRadius) * 0.8,
+        selfRotate: 0.015 / sizeRadius
+      };
+    }
+
+    // Vòng lặp vẽ hình mượt mà 60 FPS
+    function animate() {
+      requestAnimationFrame(animate);
+      TWEEN.update();
+
+      const speedFactor = timeSpeed * scaleFactors.orbitSpeed;
+
+      // 1. Xoay Mặt trời
+      if (sunMesh) sunMesh.rotation.y += 0.002 * timeSpeed;
+
+      // 2. Cập nhật vị trí các hành tinh
+      for (const key in planets) {
+        const p = planets[key];
+        
+        // Quỹ đạo quanh Mặt Trời
+        p.angle += p.speed * speedFactor;
+        p.group.position.x = Math.cos(p.angle) * p.radius;
+        p.group.position.z = Math.sin(p.angle) * p.radius;
+
+        // Tự xoay quanh trục
+        p.mesh.rotation.y += p.selfRotate * scaleFactors.rotationSpeed * timeSpeed;
+      }
+
+      // 3. Cho camera theo đuổi hành tinh nếu đang chọn hành tinh khác Mặt trời
+      if (selectedPlanetId && selectedPlanetId !== 'sun' && planets[selectedPlanetId]) {
+        const targetPos = planets[selectedPlanetId].group.position;
+        controls.target.copy(targetPos);
+      }
+
+      // Xoay nhẹ vũ trụ nền tạo hiệu ứng huyền ảo
+      if (starField && isAutoRotating) {
+        starField.rotation.y += 0.0002 * timeSpeed;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Click chọn hành tinh từ không gian
+    function onCanvasClick(e) {
+      if (!isCosmosStarted || currentView !== 'dashboard') return;
+
+      const canvas = document.getElementById('solar-canvas');
+      const rect = canvas.getBoundingClientRect();
+      
+      const mouse = new THREE.Vector2();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = [];
+      // Kiểm tra va chạm với Mặt Trời
+      if (sunMesh) {
+        const intersect = raycaster.intersectObject(sunMesh);
+        if (intersect.length > 0) {
+          selectPlanet('sun');
+          return;
+        }
+      }
+
+      // Kiểm tra va chạm với các hành tinh khác
+      for (const key in planets) {
+        const intersect = raycaster.intersectObject(planets[key].mesh);
+        if (intersect.length > 0) {
+          selectPlanet(key);
+          return;
+        }
+      }
+    }
+
+    // Chọn hành tinh và cập nhật bảng thông tin trượt ra
+    function selectPlanet(id) {
+      selectedPlanetId = id;
+      const data = planetData[id];
+      if (!data) return;
+
+      // Hiển thị panel thông tin
+      const panel = document.getElementById('planet-info-panel');
+      panel.classList.remove('translate-x-[110%]');
+
+      // Cập nhật text dữ liệu
+      document.getElementById('planet-name-vi').innerText = data.nameVi;
+      document.getElementById('planet-name-en').innerText = data.nameEn;
+      document.getElementById('planet-dist').innerText = data.dist === 0 ? 'Trung tâm' : (data.dist * 0.4).toFixed(2) + ' AU';
+      document.getElementById('planet-diam').innerText = data.diam;
+      document.getElementById('planet-temp').innerText = data.temp;
+      document.getElementById('planet-year').innerText = data.year;
+      document.getElementById('planet-desc').innerText = data.desc;
+      document.getElementById('planet-stem-tip').innerText = data.stemTip;
+
+      // Cập nhật sự kiện nút bấm liên kết sâu
+      document.getElementById('btn-deep-learn').onclick = () => {
+        // Tự động tìm module học bám sát hành tinh hoặc mở mặc định module 1
+        const module = LH_MODULES.find(m => m.target === id) || LH_MODULES[0];
+        lhStartModule(module.id);
+      };
+
+      document.getElementById('btn-deep-align').onclick = () => {
+        quickTargetTelescope(id);
+      };
+
+      // Zoom transition mượt mà
+      let targetPos = new THREE.Vector3(0, 0, 0);
+      if (id !== 'sun' && planets[id]) {
+        targetPos = planets[id].group.position;
+      }
+
+      new TWEEN.Tween(camera.position)
+        .to({
+          x: targetPos.x + 3,
+          y: targetPos.y + 2,
+          z: targetPos.z + 5
+        }, 1200)
+        .easing(TWEEN.Easing.Quadratic.Out)
+        .start();
+
+      // Cập nhật phong cách nút Carousel đang active
+      document.querySelectorAll('.carousel-item').forEach(btn => {
+        btn.className = "carousel-item px-3 py-1 rounded-full text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-all shrink-0";
+      });
+    }
+
+    function closePlanetPanel() {
+      document.getElementById('planet-info-panel').classList.add('translate-x-[110%]');
+      resetSpaceView();
+    }
+
+    function resetSpaceView() {
+      selectedPlanetId = 'sun';
+      controls.target.set(0, 0, 0);
+      new TWEEN.Tween(camera.position)
+        .to({ x: 0, y: 30, z: 48 }, 1500)
+        .easing(TWEEN.Easing.Quadratic.Out)
+        .start();
+    }
+
+    function carouselSelect(id) {
+      selectPlanet(id);
+    }
+
+    function onWindowResize() {
+      if (!scene) return;
+      const canvas = document.getElementById('solar-canvas');
+      const rect = canvas.getBoundingClientRect();
+      camera.aspect = rect.width / rect.height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(rect.width, rect.height);
+    }
+
+    // ===== ĐIỀU KHIỂN AUDIO MÔ PHỎNG SÂU (WEB AUDIO SYNTHESIS DRONE) =====
+    let isAudioPlaying = false;
+    let audioCtx = null;
+    let synthDrone = null;
+
+    function toggleSpaceAudio() {
+      isAudioPlaying = !isAudioPlaying;
+      const btn = document.getElementById('btn-audio');
+      const icon = document.getElementById('icon-audio');
+
+      if (isAudioPlaying) {
+        btn.classList.add('glow-cyan', 'text-cyan-400');
+        icon.className = "fa-solid fa-volume-high text-sm";
+        playSpaceAmbientDrone();
+      } else {
+        btn.classList.remove('glow-cyan', 'text-cyan-400');
+        icon.className = "fa-solid fa-volume-xmark text-sm";
+        stopSpaceAmbientDrone();
+      }
+    }
+
+    function playSpaceAmbientDrone() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        // Tạo 2 bộ tạo dao động tần số thấp tạo tiếng rầm rì không gian huyền bí
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const lowpass = audioCtx.createBiquadFilter();
+        const gainNode = audioCtx.createGain();
+
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(55, audioCtx.currentTime); // Âm trầm Freq cực thấp A1
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(110, audioCtx.currentTime); // Nhỉnh lên quãng tám A2
+
+        lowpass.type = 'lowpass';
+        lowpass.frequency.setValueAtTime(120, audioCtx.currentTime);
+        lowpass.Q.setValueAtTime(6, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime); // Đủ trầm ấm, không quá ồn ào
+
+        osc1.connect(lowpass);
+        osc2.connect(lowpass);
+        lowpass.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+
+        // Thêm LFO để quét tần số lọc chậm chậm như tàu vũ trụ di chuyển
+        const lfo = audioCtx.createOscillator();
+        const lfoGain = audioCtx.createGain();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(0.12, audioCtx.currentTime);
+        lfoGain.gain.setValueAtTime(45, audioCtx.currentTime);
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(lowpass.frequency);
+        lfo.start();
+
+        synthDrone = {
+          oscs: [osc1, osc2, lfo],
+          gain: gainNode
+        };
+      } catch (err) {
+        console.warn("Không khởi chạy được thiết bị phát âm thanh: ", err);
+      }
+    }
+
+    function stopSpaceAmbientDrone() {
+      if (synthDrone) {
+        synthDrone.oscs.forEach(o => { try { o.stop(); } catch(e){} });
+        try { synthDrone.gain.disconnect(); } catch(e){}
+        synthDrone = null;
+      }
+    }
+
+    // ===== BẬT TẮT ĐƯỜNG QUỸ ĐẠO =====
+    function toggleOrbits() {
+      showOrbitLines = !showOrbitLines;
+      for (const key in planets) {
+        planets[key].orbit.visible = showOrbitLines;
+      }
+    }
+
+    function toggleAutoRotate() {
+      isAutoRotating = !isAutoRotating;
+      const btn = document.getElementById('btn-autorotate');
+      if (isAutoRotating) {
+        btn.classList.add('text-cyan-400');
+      } else {
+        btn.classList.remove('text-cyan-400');
+      }
+    }
+
+    // ===== ĐIỀU CHỈNH TỐC ĐỘ THỜI GIAN =====
+    function onTimeSpeedSlider(val) {
+      timeSpeed = parseFloat(val);
+      document.getElementById('speed-label').innerText = timeSpeed.toFixed(1) + 'x';
+    }
+    function adjustTimeSpeed(step) {
+      const slider = document.getElementById('time-speed-slider');
+      let val = Math.max(0, Math.min(10, parseFloat(slider.value) + step));
+      slider.value = val;
+      onTimeSpeedSlider(val);
+    }
+
+
+    // ===== 2. ĐIỀU HƯỚNG VIEW VÀ SIDEBAR =====
+    function switchView(viewId) {
+      currentView = viewId;
+      
+      // Ẩn toàn bộ view
+      document.querySelectorAll('.view-content').forEach(view => view.classList.add('hidden'));
+      document.querySelectorAll('.view-content').forEach(view => view.classList.remove('active'));
+
+      // Hiện view chỉ định
+      const targetView = document.getElementById('view-' + viewId);
+      if (targetView) {
+        targetView.classList.remove('hidden');
+        targetView.classList.add('active');
+      }
+
+      // Cập nhật Header Title
+      const titleMap = {
+        'dashboard': 'Hệ Mặt Trời 3D Tương Tác',
+        'camera': 'Kính Thiên Văn & Camera Thực Tế',
+        'learning-hub': 'Trung Tâm Học Tập STEM',
+        'chat': 'Trợ Lý AI Thiên Văn',
+        'report': 'Báo Cáo Học Tập AI'
+      };
+      document.getElementById('current-view-title').innerText = titleMap[viewId] || '';
+
+      // Reset style các nút chuyển hướng trên Sidebar
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.className = "nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left font-semibold text-sm text-slate-400 transition-all duration-200 hover:bg-indigo-950/30 hover:text-white";
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = icon.className.replace('text-cyan-400', '');
+      });
+
+      // Kích hoạt class nút hiện tại
+      const activeBtn = document.getElementById('nav-' + viewId);
+      if (activeBtn) {
+        activeBtn.className = "nav-btn w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-950/40 to-fuchsia-950/20 text-cyan-400 border border-indigo-500/30";
+        const icon = activeBtn.querySelector('i');
+        if (icon) icon.classList.add('text-cyan-400');
+      }
+
+      // Đổi chữ nút chuyển đổi nhanh trên header
+      const quickBtnText = document.getElementById('quick-mode-text');
+      if (viewId === 'camera') {
+        quickBtnText.innerText = "Chuyển sang 3D Solar System";
+      } else {
+        quickBtnText.innerText = "Chuyển sang Kính Quan Sát";
+      }
+
+      // Nếu chuyển sang dashboard, tự động định dạng lại kích thước khung canvas 3D
+      if (viewId === 'dashboard') {
+        setTimeout(onWindowResize, 50);
+      }
+
+      // Learning Hub v2 (tv-): render lại dashboard mỗi khi mở tab Học Tập
+      if (viewId === 'learning-hub' && typeof tvRenderDashboard === 'function') {
+        document.getElementById('tvModuleView').style.display = 'none';
+        document.getElementById('tvDashboard').style.display = 'block';
+        tvRenderDashboard();
+      }
+
+      // Cập nhật mobile bottom nav active state
+      document.querySelectorAll('#mobile-bottom-nav button').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.view === viewId) btn.classList.add('active');
+      });
+
+      // Scroll to top on mobile
+      if (window.innerWidth <= 768) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function toggleQuickMode() {
+      if (currentView === 'camera') {
+        switchView('dashboard');
+      } else {
+        switchView('camera');
+      }
+    }
+
+
+    // ===== 3. ĐIỀU KHIỂN ĐỘNG CƠ ARDUINO & CAMERA THỰC TẾ =====
+    function connectArduino() {
+      // Giả lập gửi lệnh kết nối thiết bị qua backend Flask
+      const statusText = document.getElementById('arduino-status');
+      const pulse = document.getElementById('arduino-pulse');
+
+      statusText.innerText = "Đang kết nối Arduino COM8...";
+      setTimeout(() => {
+        arduinoConnected = true;
+        pulse.classList.replace('bg-red-500', 'bg-emerald-500');
+        statusText.innerText = "Đã kết nối Arduino (COM8 • 9600 Baud)";
+        logToTerminal("[Hệ thống] Kết nối thành công tới Board Arduino.");
+        addXp(10);
+      }, 1000);
+    }
+
+    function sendArduinoControl(dir) {
+      logToTerminal(`[Điều khiển] Phát tín hiệu: ${dir.toUpperCase()}`);
+      
+      // Tạo hiệu ứng chớp tắt nút D-Pad khi click
+      fetch(`/serial_control?dir=${dir}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            logToTerminal(`[Arduino] Phản hồi: ${data.message || 'Xoay hoàn tất'}`);
+          }
+        })
+        .catch(err => {
+          logToTerminal(`[Mô phỏng] Gửi lệnh "${dir}" bám mục tiêu thành công.`);
+        });
+    }
+
+    function quickTargetTelescope(planetId) {
+      const data = planetData[planetId];
+      if (!data) return;
+
+      logToTerminal(`[Hệ thống] Bắt đầu tính toán góc bám vật thể: ${data.nameVi.toUpperCase()}`);
+      logToTerminal(`[Tính toán] Tọa độ bám: Azimuth: ${(Math.random()*360).toFixed(1)}° | Altitude: ${(Math.random()*90).toFixed(1)}°`);
+      
+      sendArduinoControl('step'); // Gửi tín hiệu xoay bước dồn dập
+      
+      // Chuyển sang camera view để xem thành quả
+      setTimeout(() => {
+        switchView('camera');
+        logToTerminal(`[Arduino] Đã hướng ống kính thành công vào góc ngắm của ${data.nameVi}.`);
+        addXp(15);
+      }, 1500);
+    }
+
+    function logToTerminal(text) {
+      const term = document.getElementById('serial-terminal');
+      const timeStr = new Date().toLocaleTimeString('vi-VN');
+      term.innerHTML += `<div>[${timeStr}] ${text}</div>`;
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function capturePhoto() {
+      logToTerminal("[Camera] Đã chụp lại khoảnh khắc tháp ngắm.");
+      addXp(5);
+    }
+
+    function applyFilter(filterName) {
+      activeFilter = filterName;
+      const img = document.getElementById('telescope-stream');
+      if (filterName === 'night') {
+        img.style.filter = "matrix(0, 1, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0)"; // Tint xanh lá cực mạnh hồng ngoại
+        logToTerminal("[Bộ lọc] Chuyển qua kính lọc hồng ngoại tối ưu xuyên bụi.");
+      } else if (filterName === 'high-contrast') {
+        img.style.filter = "contrast(180%) saturate(140%) brightness(95%)";
+        logToTerminal("[Bộ lọc] Chuyển đổi bộ lọc tương phản làm nét đường vân hành tinh.");
+      } else {
+        img.style.filter = "none";
+        logToTerminal("[Bộ lọc] Tắt bộ lọc thấu kính.");
+      }
+    }
+
+
+    // ===== 4. TÍCH HỢP LEARNING HUB (STEM CHUYÊN SÂU) =====
+    let currentModule = null;
+    let currentSlideIdx = 0;
+
+    function renderLearningHubDashboards() {
+      const homeGrid = document.getElementById('home-modules-list');
+      const lhGrid = document.getElementById('lh-modules-grid');
+
+      const html = LH_MODULES.map(m => `
+        <div class="glass-card p-5 rounded-2xl border border-indigo-950/50 flex flex-col justify-between h-full relative overflow-hidden group">
+          <div class="absolute -right-3 -bottom-3 text-7xl opacity-5 group-hover:scale-110 transition-transform duration-300 pointer-events-none">${m.badge}</div>
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-3xl">${m.badge}</span>
+              <span class="text-[10px] bg-indigo-500/20 text-cyan-400 px-2 py-0.5 rounded-full font-bold font-orbitron">+${m.xp} XP</span>
+            </div>
+            <h4 class="text-sm font-extrabold text-white mb-2 leading-snug">${m.title}</h4>
+            <p class="text-xs text-slate-400 leading-relaxed mb-4">${m.desc}</p>
+          </div>
+          <button onclick="lhStartModule('${m.id}')" class="w-full py-2.5 rounded-xl bg-indigo-900/40 hover:bg-gradient-to-r hover:from-indigo-600 hover:to-fuchsia-600 text-xs font-bold text-slate-200 hover:text-white border border-indigo-500/20 hover:border-transparent transition-all mt-auto flex items-center justify-center gap-1">
+            Khám phá ngay <i class="fa-solid fa-arrow-right text-[10px]"></i>
+          </button>
+        </div>
+      `).join('');
+
+      if (homeGrid) homeGrid.innerHTML = html;
+      if (lhGrid) lhGrid.innerHTML = html;
+    }
+
+    function lhStartModule(modId) {
+      // Learning Hub v2 (tv-) quản lý module bằng số id riêng (1-5);
+      // các thẻ mô-đun nhanh trên Dashboard 3D chỉ cần đưa người dùng vào Learning Hub.
+      switchView('learning-hub');
+    }
+
+    function lhRenderSlide() {
+      if (!currentModule) return;
+      const slide = currentModule.slides[currentSlideIdx];
+
+      // Cập nhật tiêu đề bài học
+      document.getElementById('lh-view-mod-title').innerText = currentModule.title;
+      document.getElementById('lh-view-mod-desc').innerText = `Bài học ${currentSlideIdx + 1} / ${currentModule.slides.length}`;
+      document.getElementById('lh-xp-badge').innerText = `+${currentModule.xp} XP`;
+
+      // Render nội dung văn bản lý thuyết bên trái
+      document.getElementById('lh-slide-content').innerHTML = `
+        <h3 class="text-base font-orbitron font-extrabold text-cyan-400 border-b border-indigo-950/40 pb-2 uppercase tracking-wide">${slide.title}</h3>
+        <p class="text-xs text-slate-300 leading-relaxed font-semibold">${slide.text}</p>
+      `;
+
+      // Render ô hoạt động thực hành bên phải
+      document.getElementById('lh-prac-title').innerText = slide.pracTitle;
+      document.getElementById('lh-prac-desc').innerText = slide.pracDesc;
+      document.getElementById('lh-prac-action').innerHTML = slide.pracAction;
+
+      // Render dải chỉ số Dots định vị ở dưới cùng
+      const dotsContainer = document.getElementById('lh-dots');
+      dotsContainer.innerHTML = currentModule.slides.map((_, i) => `
+        <span class="w-2 h-2 rounded-full transition-all duration-300 ${i === currentSlideIdx ? 'bg-cyan-400 w-5 glow-cyan' : 'bg-slate-700'}"></span>
+      `).join('');
+
+      // Ẩn hiện nút điều hướng
+      document.getElementById('lh-btn-prev').style.opacity = currentSlideIdx === 0 ? '0.3' : '1';
+      document.getElementById('lh-btn-prev').disabled = currentSlideIdx === 0;
+
+      const nextBtn = document.getElementById('lh-btn-next');
+      if (currentSlideIdx === currentModule.slides.length - 1) {
+        nextBtn.innerHTML = `Hoàn thành <i class="fa-solid fa-flag-checkered ml-1"></i>`;
+        nextBtn.className = "px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-xs font-bold text-white transition-all";
+      } else {
+        nextBtn.innerHTML = `Tiếp Theo <i class="fa-solid fa-chevron-right ml-1"></i>`;
+        nextBtn.className = "px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition-all";
+      }
+    }
+
+    function lhNextSlide() {
+      if (!currentModule) return;
+      if (currentSlideIdx < currentModule.slides.length - 1) {
+        currentSlideIdx++;
+        lhRenderSlide();
+      } else {
+        // Hoàn thành hoàn toàn Module này
+        addXp(currentModule.xp);
+        logToTerminal(`[STEM Học Tập] Đã chinh phục thành công Module: ${currentModule.title}.`);
+        lhBackToDashboard();
+      }
+    }
+
+    function lhPrevSlide() {
+      if (!currentModule || currentSlideIdx === 0) return;
+      currentSlideIdx--;
+      lhRenderSlide();
+    }
+
+    function lhBackToDashboard() {
+      document.getElementById('lh-viewer').classList.add('hidden');
+      document.getElementById('lh-dashboard').classList.remove('hidden');
+    }
+
+    function completeStepAndAddXp(points) {
+      addXp(points);
+      logToTerminal(`[Thực hành] Hoàn thành thử thách phụ tích lũy +${points} XP.`);
+      
+      // Chuyển màu nút sau khi click
+      const pracAction = document.getElementById('lh-prac-action');
+      pracAction.innerHTML = `<div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/20 text-xs text-center text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1.5"></i>Đã vượt qua thử thách</div>`;
+    }
+
+    function lhSubmitAnswer(isCorrect, points) {
+      const pracAction = document.getElementById('lh-prac-action');
+      if (isCorrect) {
+        addXp(points);
+        logToTerminal(`[Trắc nghiệm] Bạn trả lời cực kỳ chính xác! Nhận thêm +${points} XP.`);
+        pracAction.innerHTML = `
+          <div class="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/20 text-center space-y-2">
+            <span class="text-xs text-emerald-400 font-bold block"><i class="fa-solid fa-circle-check mr-1.5"></i>Đáp án hoàn toàn chính xác!</span>
+            <p class="text-[10px] text-slate-400">Bạn đã nắm chắc kiến thức phần này để chế tạo và bám đuổi các chòm sao.</p>
+          </div>
+        `;
+      } else {
+        logToTerminal("[Trắc nghiệm] Đáp án chưa chính xác. Hãy nghiên cứu kỹ bài lý thuyết bên trái và thử thách lại nhé.");
+        pracAction.innerHTML = `
+          <div class="p-3 rounded-xl bg-red-950/40 border border-red-500/20 text-center space-y-2">
+            <span class="text-xs text-red-400 font-bold block"><i class="fa-solid fa-circle-exclamation mr-1.5"></i>Đáp án chưa đúng!</span>
+            <button onclick="lhRenderSlide()" class="px-3 py-1 bg-red-800 hover:bg-red-700 rounded-lg text-[10px] font-bold text-white transition-all">Làm lại</button>
+          </div>
+        `;
+      }
+    }
+
+
+    // ===== 5. TRỢ LÝ AI CHATBOT (GEMINI API) =====
+    function useQuickPrompt(text) {
+      document.getElementById('chat-input').value = text;
+      sendChatMessage();
+    }
+
+    function sendChatMessage() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+
+      const chatBox = document.getElementById('chat-messages');
+      // Thêm câu hỏi của User
+      chatBox.innerHTML += `
+        <div class="flex items-start gap-3 justify-end">
+          <div class="bg-indigo-600 p-3 rounded-2xl max-w-lg leading-relaxed text-right text-white">
+            ${text}
+          </div>
+          <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-fuchsia-400 shrink-0"><i class="fa-solid fa-user"></i></div>
+        </div>
+      `;
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Gọi API bot — backend /learning_chat yêu cầu { system_prompt, messages: [...] }
+      fetch('/learning_chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_prompt: "Bạn là Trợ Lý AI Thiên Văn STEM thân thiện, hỗ trợ học sinh.",
+          messages: [
+            { role: "user", content: text }
+          ]
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        chatBox.innerHTML += `
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-cyan-400 shrink-0"><i class="fa-solid fa-robot"></i></div>
+            <div class="bg-indigo-950/30 border border-white/5 p-3 rounded-2xl max-w-lg leading-relaxed text-slate-200">
+              ${data.reply || "Xin lỗi, mình chưa trả lời được..."}
+            </div>
+          </div>
+        `;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        addXp(2);
+      })
+      .catch(err => {
+        // Fallback giả lập thông minh khi không có kết nối server Flask
+        setTimeout(() => {
+          chatBox.innerHTML += `
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-cyan-400 shrink-0"><i class="fa-solid fa-robot"></i></div>
+              <div class="bg-indigo-950/30 border border-white/5 p-3 rounded-2xl max-w-lg leading-relaxed text-slate-200">
+                Ý kiến rất thú vị! 🔭 Để lập trình xoay kính tới mục tiêu này, bạn có thể gửi chuỗi lệnh bước qua bo mạch Arduino điều khiển 2 trục stepper. Bạn có muốn học thêm chi tiết trong Module 3 của chúng ta không?
+              </div>
+            </div>
+          `;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }, 1000);
+      });
+    }
+
+    function clearChat() {
+      document.getElementById('chat-messages').innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-950 flex items-center justify-center border border-indigo-500/30 text-cyan-400 shrink-0"><i class="fa-solid fa-robot"></i></div>
+          <div class="bg-indigo-950/30 border border-white/5 p-3 rounded-2xl max-w-lg leading-relaxed">
+            Hội thoại đã được làm mới. Hãy đặt câu hỏi bất kỳ cho mình nhé! 🪐
+          </div>
+        </div>
+      `;
+    }
+
+
+    // ===== 6. TẠO BÁO CÁO HỌC TẬP AI =====
+    function generateAIReport() {
+      const output = document.getElementById('report-output');
+      output.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-10 space-y-3">
+          <i class="fa-solid fa-spinner animate-spin text-fuchsia-500 text-3xl"></i>
+          <p class="text-xs text-slate-400 font-bold font-orbitron uppercase animate-pulse">AI Đang tổng hợp dữ liệu học tập cá nhân...</p>
+        </div>
+      `;
+
+      const promptStr = `Học sinh đã tích lũy ${userXp} XP, hoàn thành xuất sắc việc quan sát 3D Hệ Mặt Trời và tương tác Arduino điều hướng thấu kính bám mục tiêu tự động.`;
+
+      fetch('/learning_report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptStr })
+      })
+      .then(res => res.json())
+      .then(data => {
+        output.innerHTML = `
+          <div class="space-y-4">
+            <div class="p-3 bg-fuchsia-950/30 rounded-xl border border-fuchsia-500/20 text-xs text-fuchsia-300 font-bold">
+              <i class="fa-solid fa-wand-magic-sparkles mr-1.5 animate-pulse"></i> Báo cáo huấn luyện hoàn tất bởi Trí Tuệ Nhân Tạo
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${data.report}</p>
+          </div>
+        `;
+        addXp(10);
+      })
+      .catch(err => {
+        setTimeout(() => {
+          output.innerHTML = `
+            <div class="space-y-4">
+              <div class="p-3 bg-indigo-950/30 rounded-xl border border-indigo-500/20 text-xs text-cyan-400 font-bold">
+                <i class="fa-solid fa-shield-halved mr-1.5"></i> Báo cáo mẫu giả lập (Thiếu kết nối Flask Server)
+              </div>
+              <h4 class="font-bold text-white uppercase text-xs">Phân tích hành trình: Nhà thám hiểm không gian</h4>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Chúc mừng bạn học sinh tài năng! Dữ liệu hoạt động ghi nhận bạn rất tích cực điều hướng 3D và tìm tòi các miệng hố Mặt Trăng.
+                <br><br>
+                <strong>Điểm mạnh:</strong> Hiểu rõ cơ học chuyển động tương đối của các hành tinh trong Hệ Mặt Trời. Khả năng tự học cao qua các bước quiz thực hành.
+                <br><br>
+                <strong>Đề xuất:</strong> Hãy gắn cảm biến bước và động cơ Arduino lên kính thiên văn STEM thực tế của bạn để bám sát Sao Mộc bão đỏ khổng lồ vào chu kỳ tới nhé!
+              </p>
+            </div>
+          `;
+        }, 1200);
+      });
+    }
+
+
+    // ===== 7. MODAL SO SÁNH KÍCH THƯỚC HÀNH TINH =====
+    function openSizeCompareModal() {
+      document.getElementById('size-compare-modal').classList.remove('hidden');
+      renderSizeBars();
+    }
+    function closeSizeCompareModal() {
+      document.getElementById('size-compare-modal').classList.add('hidden');
+    }
+    function renderSizeBars() {
+      const container = document.getElementById('size-bars-container');
+      
+      // Lấy danh sách sắp xếp theo độ rộng lớn dần
+      const list = Object.keys(planetData).map(k => ({ id: k, ...planetData[k] }));
+      
+      const maxMultiplier = 11.2; // Sao Mộc to gấp 11.2 lần Trái đất
+
+      container.innerHTML = list.map(item => {
+        // Tính tỷ lệ phần trăm thanh dài ngắn bám sát kích cỡ thật
+        let relativeSize = 1;
+        if (item.id === 'sun') relativeSize = 10; // Giới hạn hiển thị của mặt trời kẻo quá dài
+        else if (item.id === 'mercury') relativeSize = 0.38;
+        else if (item.id === 'venus') relativeSize = 0.95;
+        else if (item.id === 'earth') relativeSize = 1.0;
+        else if (item.id === 'moon') relativeSize = 0.27;
+        else if (item.id === 'mars') relativeSize = 0.53;
+        else if (item.id === 'jupiter') relativeSize = 11.2;
+        else if (item.id === 'saturn') relativeSize = 9.45;
+        else if (item.id === 'uranus') relativeSize = 4.0;
+        else if (item.id === 'neptune') relativeSize = 3.88;
+
+        const percent = (relativeSize / maxMultiplier) * 100;
+
+        return `
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-white flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background-color: ${'#' + item.color.toString(16)}"></span> ${item.nameVi}</span>
+              <span class="text-slate-400 text-[10px] font-bold font-orbitron">Tỉ lệ: ${relativeSize}x Trái Đất (${item.diam})</span>
+            </div>
+            <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-white/5">
+              <div class="h-full rounded-full transition-all duration-1000" style="width: ${percent}%; background-color: ${'#' + item.color.toString(16)}"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+
+    // ===== 8. QUẢN LÝ XP & CẤP ĐỘ VÀ CHỨNG CHỈ =====
+    function addXp(pts) {
+      userXp += pts;
+      const level = Math.floor(userXp / levelThresh) + 1;
+      const progress = (userXp % levelThresh);
+
+      // Cập nhật giao diện Sidebar
+      const lvlEl = document.getElementById('user-level');
+      if (lvlEl) lvlEl.innerText = `Cấp độ ${level}`;
+
+      const bar = document.getElementById('user-xp-bar');
+      if (bar) bar.style.width = progress + '%';
+
+      const txt = document.getElementById('user-xp-text');
+      if (txt) txt.innerText = `${progress} / ${levelThresh} XP`;
+
+      // Cập nhật giao diện Báo cáo học tập
+      const repXp = document.getElementById('report-xp');
+      if (repXp) repXp.innerText = `${userXp} XP`;
+
+      // Cập nhật chứng chỉ
+      const certXp = document.getElementById('lhCertXp');
+      if (certXp) certXp.innerText = `${userXp} XP`;
+    }
+
+    function lhShowCertificate() {
+      document.getElementById('lhCertModal').classList.remove('hidden');
+      document.getElementById('lhCertDate').innerText = 'Cấp ngày ' + new Date().toLocaleDateString('vi-VN');
+      
+      const badges = document.getElementById('lhCertBadges');
+      badges.innerHTML = LH_MODULES.map(m => `
+        <span class="px-2.5 py-1 rounded-full bg-indigo-950/80 border border-cyan-500/30 text-[10px] font-bold text-cyan-400">
+          ${m.badge} ${m.title}
+        </span>
+      `).join('');
+    }
+
+    function lhCloseCertificate() {
+      document.getElementById('lhCertModal').classList.add('hidden');
+    }
+
+    function downloadCertificate() {
+      const area = document.getElementById('cert-canvas-area');
+      html2canvas(area, { scale: 2, useCORS: true }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('l', 'mm', 'a4');
+        const imgWidth = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        pdf.save('STEM_Astronomer_Certificate.pdf');
+        logToTerminal("[Hệ thống] Đã xuất thành công file Chứng nhận nhà thiên văn PDF chất lượng cao.");
+      });
+    }
+
+    // ===== KHỞI CHẠY KHÔNG GIAN KHI LOAD TRANG =====
+    window.onload = function() {
+      renderLearningHubDashboards();
+      
+      // Tự ẩn hero banner sau 4 giây
+      setTimeout(() => {
+        const banner = document.getElementById('hero-3d-banner');
+        if (banner) {
+          banner.classList.add('hero-banner-hiding');
+          setTimeout(() => banner.style.display = 'none', 1000);
+        }
+      }, 4000);
+
+      // Đồng hồ HUD bám sát thời gian thực tế
+      setInterval(() => {
+        const hud = document.getElementById('current-time-hud');
+        if (hud) {
+          hud.innerText = new Date().toLocaleTimeString('vi-VN');
+        }
+      }, 1000);
+    };
+
+    // ════════════════════════════════════════════════════════════════
+    // LEARNING HUB v2 — module thực hành 5 bước (tv-) — tích hợp backend Flask
+    // (dùng chung /learning_chat, /learning_report, /command, /video_feed)
+    // ════════════════════════════════════════════════════════════════
+    const TV_MODS = [
+      { id:1, icon:'🔭', badge:'🔭', color:'linear-gradient(135deg,#63b3ed,#4299e1)', totalXp:70,
+        title:'Thiên Văn Cơ Bản & Kỹ Năng Sử Dụng Kính',
+        desc:'Hiểu bầu trời đêm, học cách dùng kính thiên văn và Pan/Tilt để quan sát',
+        xp:[10,15,20,25],
+        stages:[
+          { type:'theory', title:'Lý thuyết', icon:'📖',
+            sys:'Bạn là AI gia sư Module 1 – Thiên Văn Cơ Bản. Giải thích nguyên lý kính thiên văn khúc xạ/phản xạ, độ phóng đại, khẩu độ, thị kính. Trả lời tiếng Việt, thân thiện, không dùng ký tự markdown.',
+            intro:'Chào bạn! Hôm nay cùng khám phá bầu trời đêm và học cách dùng kính thiên văn nhé 🔭',
+            prompts:['Kính thiên văn hoạt động thế nào?','Độ phóng đại bao nhiêu là đủ?','Nên quan sát vào giờ nào?','Bầu trời đêm có gì?'],
+            content:`
+              <div class="tv-ib blue"><h4>🔭 Kính thiên văn là gì?</h4><p class="tv-text">Thu gom ánh sáng từ thiên thể xa, tập trung qua thấu kính/gương, phóng đại qua thị kính. Độ phóng đại = tiêu cự ống chính / tiêu cự thị kính.</p></div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0;">
+                <div class="tv-ib blue" style="margin:0;text-align:center;"><div style="font-size:2rem;margin-bottom:6px;">🔍</div><div style="font-weight:700;font-size:.88rem;color:#63b3ed;">Khẩu độ</div><p class="tv-text" style="font-size:.78rem;margin:4px 0 0;">Lớn hơn = thu nhiều sáng hơn</p></div>
+                <div class="tv-ib purple" style="margin:0;text-align:center;"><div style="font-size:2rem;margin-bottom:6px;">📏</div><div style="font-weight:700;font-size:.88rem;color:#9f7aea;">Tiêu cự</div><p class="tv-text" style="font-size:.78rem;margin:4px 0 0;">Dài hơn = phóng đại hơn</p></div>
+                <div class="tv-ib amber" style="margin:0;text-align:center;"><div style="font-size:2rem;margin-bottom:6px;">👁️</div><div style="font-weight:700;font-size:.88rem;color:#f6ad55;">Thị kính</div><p class="tv-text" style="font-size:.78rem;margin:4px 0 0;">Tiêu cự nhỏ = phóng đại lớn</p></div>
+              </div>
+              <div class="tv-ib amber"><h4>🕒 Thời điểm quan sát tốt nhất</h4><p class="tv-text">Trước và sau nửa đêm, trời quang mây, xa thành phố. Cần thích nghi bóng tối 15–20 phút.</p></div>`,
+            quiz:[
+              {q:'Độ phóng đại tính bằng?',opts:['Tiêu cự thị kính / tiêu cự ống chính','Tiêu cự ống chính / tiêu cự thị kính','Khẩu độ / tiêu cự ống chính','Đường kính / tiêu cự thị kính'],a:1},
+              {q:'Để thu nhiều ánh sáng từ thiên thể mờ nhạt, cần?',opts:['Thị kính tiêu cự nhỏ','Tăng độ phóng đại','Khẩu độ lớn hơn','Ống ngắn hơn'],a:2},
+              {q:'Ô nhiễm ánh sáng ảnh hưởng thế nào?',opts:['Làm kính mờ','Che khuất thiên thể mờ nhạt','Tốt hơn để tìm hành tinh','Không ảnh hưởng'],a:1},
+              {q:'Pan/Tilt dùng để?',opts:['Zoom ảnh','Điều chỉnh hướng kính theo 2 trục','Căn chỉnh thị kính','Đo khoảng cách'],a:1},
+              {q:'Mắt cần thích nghi bóng tối bao lâu?',opts:['2–3 phút','5–7 phút','15–20 phút','1 giờ'],a:2},
+              {q:'Thiên thể nào dễ quan sát nhất cho người mới?',opts:['Tinh vân Orion','Mặt Trăng','Dải Ngân Hà','Thiên hà Andromeda'],a:1}
+            ]
+          },
+          { type:'observe', title:'Quan sát', icon:'📷',
+            sys:'Bạn là AI gia sư hỗ trợ Quan sát Module 1. Giúp học sinh căn chỉnh kính, điều khiển Pan/Tilt, xử lý ảnh mờ. Tiếng Việt, thân thiện.',
+            intro:'Bắt đầu quan sát thực tế rồi! 📷 Dùng nút Pan/Tilt để điều hướng kính.',
+            prompts:['Làm sao căn chỉnh kính cho rõ?','Pan/Tilt nào thấy Mặt Trăng?','Ảnh bị mờ phải làm gì?','Nên quan sát gì hôm nay?'],
+            obsTargets:['Mặt Trăng','Sao Mộc','Sao Thổ','Sao Kim','Chòm sao','Khác']
+          },
+          { type:'experiment', title:'Thực nghiệm', icon:'🧪',
+            sys:'Bạn là AI gia sư Thực nghiệm Module 1. Giúp học sinh phân tích nhật ký, so sánh góc Pan/Tilt, rút ra kết luận. Tiếng Việt, thân thiện.',
+            intro:'Ghi ít nhất 3 lần quan sát để so sánh nhé! 🧪',
+            prompts:['So sánh 2 lần quan sát','Pan/Tilt nào cho ảnh rõ nhất?','Tại sao ảnh bị rung?','Ghi chép khoa học thế nào?'],
+            logCols:['Thời gian','Đối tượng','Pan','Tilt','Độ rõ (1-5)','Ghi chú']
+          },
+          { type:'summary', title:'Tổng kết', icon:'🏆',
+            sys:'Bạn là AI gia sư Tổng kết Module 1 – Thiên Văn Cơ Bản. Tổng hợp kỹ năng sử dụng kính, Pan/Tilt. Tiếng Việt, khích lệ.',
+            intro:'Tuyệt vời! Bạn sắp hoàn thành Module 1 rồi 🎉',
+            prompts:['Tóm tắt kỹ năng đã học','Điểm yếu cần cải thiện?','Bước tiếp theo?','Tạo bài ôn tập'],
+            selfColor:'#63b3ed', selfBorder:'rgba(99,179,237,.2)',
+            selfLabels:['Kỹ năng em đã nắm được...','Điều em còn thắc mắc...','Ứng dụng thực tế em rút ra...']
+          }
+        ]
+      },
+      { id:2, icon:'☀️', badge:'🪐', color:'linear-gradient(135deg,#f6ad55,#ed8936)', totalXp:80,
+        title:'Hệ Mặt Trời & Các Hành Tinh',
+        desc:'Cấu tạo Hệ Mặt Trời, 8 hành tinh, cách quan sát Sao Mộc, Sao Thổ, Sao Kim',
+        xp:[15,20,20,25],
+        stages:[
+          { type:'theory', title:'Lý thuyết', icon:'📖',
+            sys:'Bạn là AI gia sư Module 2 – Hệ Mặt Trời. Giải thích Mặt Trời và 8 hành tinh, đặc điểm quan sát bằng kính. Tiếng Việt, thân thiện, không markdown.',
+            intro:'Hôm nay cùng khám phá cả Hệ Mặt Trời nhé ☀️',
+            prompts:['Thứ tự 8 hành tinh?','Sao Mộc có gì đặc biệt?','Sao Kim sáng nhất vì sao?','Hành tinh nào có vành đai?'],
+            content:`
+              <div class="tv-ib amber"><h4>☀️ Hệ Mặt Trời</h4><p class="tv-text">Mặt Trời là ngôi sao trung tâm, chiếm 99.86% khối lượng. 8 hành tinh từ gần đến xa: Sao Thủy, Sao Kim, Trái Đất, Sao Hỏa, Sao Mộc, Sao Thổ, Thiên Vương, Hải Vương.</p></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;">
+                <div class="tv-ib blue" style="margin:0;"><div style="font-weight:700;color:#63b3ed;font-size:.9rem;margin-bottom:4px;">🪐 Sao Mộc</div><p class="tv-text" style="font-size:.8rem;margin:0;">Lớn nhất, có Vệt Đỏ Lớn và 4 vệ tinh Galilean dễ quan sát qua kính.</p></div>
+                <div class="tv-ib amber" style="margin:0;"><div style="font-weight:700;color:#f6ad55;font-size:.9rem;margin-bottom:4px;">🪐 Sao Thổ</div><p class="tv-text" style="font-size:.8rem;margin:0;">Hệ thống vành đai đẹp nhất, thấy rõ qua kính với độ phóng đại vừa phải.</p></div>
+                <div class="tv-ib purple" style="margin:0;"><div style="font-weight:700;color:#9f7aea;font-size:.9rem;margin-bottom:4px;">⭐ Sao Kim</div><p class="tv-text" style="font-size:.8rem;margin:0;">Thiên thể sáng nhất sau Mặt Trời và Mặt Trăng. Có pha giống Mặt Trăng qua kính.</p></div>
+                <div class="tv-ib green" style="margin:0;"><div style="font-weight:700;color:#48bb78;font-size:.9rem;margin-bottom:4px;">🔴 Sao Hỏa</div><p class="tv-text" style="font-size:.8rem;margin:0;">Hành tinh đỏ, thấy màu cam-đỏ đặc trưng và đôi khi chỏm băng cực.</p></div>
+              </div>`,
+            quiz:[
+              {q:'Hành tinh thứ 5 từ Mặt Trời?',opts:['Sao Hỏa','Sao Thổ','Sao Mộc','Thiên Vương'],a:2},
+              {q:'Vành đai đẹp nhất quan sát được?',opts:['Sao Mộc','Sao Thổ','Thiên Vương','Hải Vương'],a:1},
+              {q:'Sao Kim sáng nhất vì?',opts:['Lớn nhất','Gần Mặt Trời và khí quyển phản chiếu tốt','Tự phát sáng','Có vành đai'],a:1},
+              {q:'Vệt Đỏ Lớn trên Sao Mộc là gì?',opts:['Núi lửa','Bão xoáy khổng lồ kéo dài hàng trăm năm','Vệ tinh lớn','Vành đai'],a:1},
+              {q:'4 vệ tinh Galilean thuộc hành tinh nào?',opts:['Sao Thổ','Sao Hỏa','Sao Mộc','Hải Vương'],a:2},
+              {q:'Hành tinh nào nhóm "đất đá"?',opts:['Sao Mộc','Sao Thổ','Thiên Vương','Sao Hỏa'],a:3}
+            ]
+          },
+          { type:'observe', title:'Quan sát', icon:'📷',
+            sys:'Bạn là AI gia sư Quan sát Module 2. Hướng dẫn nhận biết hành tinh qua camera, phân biệt với ngôi sao. Tiếng Việt, thân thiện.',
+            intro:'Bầu trời tối rồi, cùng tìm hành tinh qua kính! 🪐 Hành tinh không nhấp nháy như sao.',
+            prompts:['Làm sao phân biệt hành tinh với sao?','Hôm nay quan sát Sao Mộc/Sao Thổ ở đâu?','Pha Sao Kim trông thế nào?','Thời điểm tốt nhất nhìn Sao Thổ?'],
+            obsTargets:['Sao Kim','Sao Mộc','Sao Thổ','Sao Hỏa','Sao Thủy','Mặt Trăng','Khác']
+          },
+          { type:'experiment', title:'Thực nghiệm', icon:'🧪',
+            sys:'Bạn là AI gia sư Thực nghiệm Module 2. Giúp học sinh so sánh nhật ký hành tinh, rút ra đặc điểm phân biệt. Tiếng Việt, thân thiện.',
+            intro:'Ghi nhật ký từng hành tinh bạn quan sát nhé! 🧪',
+            prompts:['So sánh các hành tinh đã quan sát','Hành tinh nào dễ tìm nhất?','Tại sao hành tinh di chuyển?'],
+            logCols:['Thời gian','Hành tinh','Pan','Tilt','Độ rõ','Đặc điểm thấy được']
+          },
+          { type:'summary', title:'Tổng kết', icon:'🏆',
+            sys:'Bạn là AI gia sư Tổng kết Module 2. Tổng hợp kiến thức Hệ Mặt Trời. Tiếng Việt, khích lệ.',
+            intro:'Module 2 sắp hoàn thành! 🪐',
+            prompts:['Tóm tắt Hệ Mặt Trời','Hành tinh nào ấn tượng nhất?','Cách quan sát Sao Thổ tốt nhất?'],
+            selfColor:'#f6ad55', selfBorder:'rgba(246,173,85,.2)',
+            selfLabels:['Kiến thức em đã nắm về Hệ Mặt Trời...','Điều em còn thắc mắc...','Ứng dụng thực tế em rút ra...']
+          }
+        ]
+      },
+      { id:3, icon:'🌕', badge:'🌖', color:'linear-gradient(135deg,#e2e8f0,#a0aec0)', totalXp:75,
+        title:'Mặt Trăng – Vệ Tinh Tự Nhiên',
+        desc:'Chu kỳ pha Mặt Trăng, nhật/nguyệt thực, quan sát bề mặt Mặt Trăng',
+        xp:[15,20,20,20],
+        stages:[
+          { type:'theory', title:'Lý thuyết', icon:'📖',
+            sys:'Bạn là AI gia sư Module 3 – Mặt Trăng. Giải thích 8 pha, nguyên nhân nhật/nguyệt thực, địa hình bề mặt. Tiếng Việt, thân thiện.',
+            intro:'Hôm nay học về người bạn gần nhất của Trái Đất – Mặt Trăng! 🌕',
+            prompts:['8 pha Mặt Trăng là gì?','Nguyệt thực xảy ra thế nào?','Biển trên Mặt Trăng là gì?','Tại sao Mặt Trăng luôn quay một mặt về Trái Đất?'],
+            content:`
+              <div class="tv-ib blue"><h4>🌙 Chu kỳ pha Mặt Trăng (29.5 ngày)</h4>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">${['🌑 Trăng Mới','🌒 Lưỡi Liềm Khuyết','🌓 Bán Nguyệt Đầu','🌔 Bầu Dục Khuyết','🌕 Trăng Tròn','🌖 Bầu Dục Vơi','🌗 Bán Nguyệt Cuối','🌘 Lưỡi Liềm Vơi'].map(p=>`<span style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:4px 10px;font-size:.8rem;color:#e2e8f0;">${p}</span>`).join('')}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+                <div class="tv-ib purple" style="margin:0;"><h4>🌑 Nguyệt thực</h4><p class="tv-text" style="font-size:.82rem;">Trái Đất che Mặt Trăng → Trăng đỏ (Trăng máu). Xảy ra khi Mặt Trăng Tròn.</p></div>
+                <div class="tv-ib amber" style="margin:0;"><h4>☀️ Nhật thực</h4><p class="tv-text" style="font-size:.82rem;">Mặt Trăng che Mặt Trời. Chỉ xảy ra tại Trăng Mới. KHÔNG nhìn thẳng nhật thực!</p></div>
+              </div>
+              <div class="tv-ib green" style="margin-top:12px;"><h4>🗺️ Bề mặt Mặt Trăng</h4><p class="tv-text" style="font-size:.82rem;">"Biển" (Maria): vùng tối – nham thạch basalt cổ. Miệng hố: rõ nhất ở ranh giới sáng/tối (terminator). Núi: đổ bóng dài khi bình minh/hoàng hôn Mặt Trăng.</p></div>`,
+            quiz:[
+              {q:'Mặt Trăng Tròn xuất hiện khi nào?',opts:['Mặt Trăng ở giữa Trái Đất và Mặt Trời','Trái Đất ở giữa Mặt Trăng và Mặt Trời','Mặt Trời ở giữa','Mặt Trăng vuông góc'],a:1},
+              {q:'Nguyệt thực xảy ra pha nào?',opts:['Trăng Mới','Bán Nguyệt','Trăng Tròn','Lưỡi Liềm'],a:2},
+              {q:'"Maria" (biển) trên Mặt Trăng là gì?',opts:['Đại dương nước','Vùng nham thạch basalt tối','Miệng hố','Đồng bằng băng'],a:1},
+              {q:'Tại sao Mặt Trăng luôn quay cùng một mặt về Trái Đất?',opts:['Không quay','Chu kỳ tự quay và quỹ đạo bằng nhau','Trái Đất giữ chặt','Lực hút quá mạnh'],a:1},
+              {q:'Thời điểm tốt nhất để quan sát miệng hố?',opts:['Trăng Tròn','Gần ranh giới sáng/tối (terminator)','Trăng Mới','Nhật thực'],a:1},
+              {q:'Chu kỳ Mặt Trăng khoảng bao lâu?',opts:['7 ngày','14 ngày','29.5 ngày','365 ngày'],a:2}
+            ]
+          },
+          { type:'observe', title:'Quan sát', icon:'📷',
+            sys:'Bạn là AI gia sư Quan sát Module 3 – Mặt Trăng. Hỗ trợ nhận biết pha, địa hình qua camera. Tiếng Việt, thân thiện.',
+            intro:'Hướng kính lên Mặt Trăng và khám phá bề mặt! 🌕',
+            prompts:['Mặt Trăng đang ở pha nào?','Làm sao nhận ra miệng hố?','Biển nào dễ thấy nhất?','Khi nào thấy terminator?'],
+            obsTargets:['🌑 Trăng Mới','🌒 Lưỡi Liềm Khuyết','🌓 Bán Nguyệt Đầu','🌔 Bầu Dục Khuyết','🌕 Trăng Tròn','🌖 Bầu Dục Vơi','🌗 Bán Nguyệt Cuối','🌘 Lưỡi Liềm Vơi'],
+            obsLabel:'Pha Mặt Trăng hiện tại',
+            obsP1:'Địa hình thấy được – biển, miệng hố, chi tiết nổi bật?',
+            obsP2:'Điều quan sát khớp hoặc khác lý thuyết thế nào?'
+          },
+          { type:'experiment', title:'Thực nghiệm', icon:'🧪',
+            sys:'Bạn là AI gia sư Thực nghiệm Module 3 – Mặt Trăng. Giúp so sánh quan sát nhiều buổi, theo dõi thay đổi pha. Tiếng Việt, thân thiện.',
+            intro:'Ghi Mặt Trăng qua nhiều buổi tối để so sánh sự thay đổi pha! 🌙',
+            prompts:['So sánh Mặt Trăng qua các buổi','Pha thay đổi bao nhiêu sau 3 ngày?','Hôm nay terminator ở đâu?'],
+            logCols:['Ngày/Giờ','Pha','Pan','Tilt','Độ sáng','Địa hình thấy được']
+          },
+          { type:'summary', title:'Tổng kết', icon:'🏆',
+            sys:'Bạn là AI gia sư Tổng kết Module 3 – Mặt Trăng. Tổng hợp pha, địa hình, ảnh hưởng thủy triều. Tiếng Việt, thân thiện.',
+            intro:'Mặt Trăng không chỉ đẹp mà còn ảnh hưởng đến thủy triều! 🌕',
+            prompts:['Liên hệ Mặt Trăng và thủy triều','Ý nghĩa văn hóa Mặt Trăng','Tôi thấy gì ở trăng non?'],
+            selfColor:'#e2e8f0', selfBorder:'rgba(255,255,255,.12)',
+            selfLabels:['Kiến thức em đã nắm về Mặt Trăng...','Điều em còn thắc mắc...','Liên hệ thực tế – thủy triều, lịch âm, văn hóa...']
+          }
+        ]
+      },
+      { id:4, icon:'✨', badge:'⭐', color:'linear-gradient(135deg,#9f7aea,#805ad5)', totalXp:75,
+        title:'Sao & Chòm Sao Nổi Bật',
+        desc:'Nhận biết chòm sao dễ thấy ở Việt Nam, dùng sao định hướng, phân loại sao',
+        xp:[15,20,20,20],
+        stages:[
+          { type:'theory', title:'Lý thuyết', icon:'📖',
+            sys:'Bạn là AI gia sư Module 4 – Sao và Chòm sao. Giải thích sao, phân loại theo màu/nhiệt độ, hướng dẫn tìm chòm Bắc Đẩu, Orion, Thập Tự Phương Nam. Tiếng Việt, thân thiện.',
+            intro:'Bầu trời đêm đầy sao là cả một bản đồ thiên nhiên! ✨',
+            prompts:['Sao là gì?','Chòm sao Bắc Đẩu ở đâu?','Làm sao tìm sao Bắc Cực?','Chòm sao nào thấy ở Việt Nam?'],
+            content:`
+              <div class="tv-ib purple"><h4>⭐ Sao là gì?</h4><p class="tv-text">Quả cầu khí khổng lồ tự phát sáng bằng phản ứng nhiệt hạch. Màu sắc biểu thị nhiệt độ: Xanh = nóng nhất (~30,000K) → Trắng → Vàng → Cam → Đỏ = lạnh nhất (~3,000K).</p></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+                <div class="tv-ib blue" style="margin:0;"><h4>🐻 Chòm Bắc Đẩu</h4><p class="tv-text" style="font-size:.8rem;">7 sao tạo hình gáo múc nước. Hai sao cuối chỉ thẳng đến Sao Bắc Cực.</p></div>
+                <div class="tv-ib amber" style="margin:0;"><h4>🏹 Chòm Orion</h4><p class="tv-text" style="font-size:.8rem;">3 sao thẳng hàng (Vành Đai Orion), Betelgeuse (đỏ) và Rigel (xanh).</p></div>
+                <div class="tv-ib green" style="margin:0;"><h4>✝️ Thập Tự Phương Nam</h4><p class="tv-text" style="font-size:.8rem;">Thấy ở Việt Nam về phía Nam, dùng xác định phương Nam.</p></div>
+                <div class="tv-ib purple" style="margin:0;"><h4>🦁 Chòm Leo</h4><p class="tv-text" style="font-size:.8rem;">Thấy rõ mùa xuân. Sao Regulus sáng nhất. Đầu sư tử hình liềm ngược.</p></div>
+              </div>`,
+            quiz:[
+              {q:'Sao màu xanh có nhiệt độ thế nào so với sao đỏ?',opts:['Lạnh hơn','Bằng nhau','Nóng hơn','Không liên quan'],a:2},
+              {q:'Sao Bắc Cực nằm ở chòm sao nào?',opts:['Bắc Đẩu (Ursa Major)','Tiểu Hùng (Ursa Minor)','Cassiopeia','Orion'],a:1},
+              {q:'Vành Đai Orion gồm bao nhiêu sao?',opts:['2','3','4','7'],a:1},
+              {q:'Chòm sao nào dùng xác định phương Bắc?',opts:['Orion','Thập Tự Phương Nam','Bắc Đẩu','Scorpius'],a:2},
+              {q:'Sao Betelgeuse ở chòm Orion có màu gì?',opts:['Xanh','Vàng','Đỏ cam','Trắng'],a:2}
+            ]
+          },
+          { type:'observe', title:'Quan sát', icon:'📷',
+            sys:'Bạn là AI gia sư Quan sát Module 4. Hướng dẫn tìm và quan sát chòm sao qua camera. Tiếng Việt, thân thiện.',
+            intro:'Hướng kính lên bầu trời và tìm các chòm sao! ✨',
+            prompts:['Hướng dẫn tìm Bắc Đẩu','Nhìn Orion qua kính trông thế nào?','Thấy sao đôi không?'],
+            obsTargets:['Bắc Đẩu (Ursa Major)','Tiểu Hùng (Ursa Minor)','Orion','Thập Tự Phương Nam','Scorpius','Leo','Cassiopeia','Khác'],
+            obsLabel:'Chòm sao đang quan sát',
+            obsP1:'Mô tả hình dạng – bao nhiêu sao? Màu sắc?',
+            obsP2:'Có dùng định hướng được không?'
+          },
+          { type:'experiment', title:'Thực nghiệm', icon:'🧪',
+            sys:'Bạn là AI gia sư Thực nghiệm Module 4. Giúp ghi nhật ký chòm sao, so sánh màu sắc và độ sáng. Tiếng Việt, thân thiện.',
+            intro:'Ghi nhật ký từng chòm sao bạn quan sát nhé! 🧪',
+            prompts:['So sánh 2 chòm sao khác nhau','Sao nào sáng nhất tôi thấy?','Thử định hướng bằng sao'],
+            logCols:['Thời gian','Chòm/Sao','Pan','Tilt','Màu sắc','Độ sáng (1-5)','Ghi chú']
+          },
+          { type:'summary', title:'Tổng kết', icon:'🏆',
+            sys:'Bạn là AI gia sư Tổng kết Module 4. Tổng hợp sao và chòm sao, kỹ năng định hướng. Tiếng Việt, khích lệ.',
+            intro:'Module 4 sắp xong! ✨ Bạn đã biết cách đọc bản đồ sao rồi!',
+            prompts:['Tổng kết kỹ năng nhận biết sao','Cách định hướng bằng sao ban đêm','Tôi nên học thêm chòm sao nào?'],
+            selfColor:'#9f7aea', selfBorder:'rgba(159,122,234,.2)',
+            selfLabels:['Các chòm sao em đã học và nhận biết được...','Điều em còn cần luyện tập...','Ứng dụng định hướng trong cuộc sống...']
+          }
+        ]
+      },
+      { id:5, icon:'🌠', badge:'☄️', color:'linear-gradient(135deg,#f687b3,#f6ad55)', totalXp:80,
+        title:'Hiện Tượng Thiên Văn Đặc Biệt',
+        desc:'Mưa sao băng, sao chổi, nhật thực, nguyệt thực – cách chuẩn bị và quan sát an toàn',
+        xp:[15,20,22,23],
+        stages:[
+          { type:'theory', title:'Lý thuyết', icon:'📖',
+            sys:'Bạn là AI gia sư Module 5 – Hiện tượng thiên văn đặc biệt. Giải thích mưa sao băng, sao chổi, nhật thực/nguyệt thực. Nhấn mạnh an toàn. Tiếng Việt, thân thiện.',
+            intro:'Những hiện tượng thiên văn hiếm gặp nhất sắp được khám phá! 🌠',
+            prompts:['Mưa sao băng là gì?','Sao chổi khác tiểu hành tinh thế nào?','Quan sát nhật thực an toàn thế nào?','Khi nào có mưa sao băng Perseids?'],
+            content:`
+              <div class="tv-ib amber"><h4>☄️ Mưa Sao Băng</h4><p class="tv-text">Trái Đất đi qua đường đuôi bụi sao chổi, hạt bụi bốc cháy tạo vệt sáng. Lớn: Perseids (tháng 8), Leonids (tháng 11), Geminids (tháng 12). Quan sát bằng mắt thường, tránh dùng kính!</p></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+                <div class="tv-ib purple" style="margin:0;"><h4>🌠 Sao Chổi</h4><p class="tv-text" style="font-size:.82rem;">Thiên thể băng và bụi. Gần Mặt Trời: lõi băng bay hơi tạo "coma" và đuôi. Đuôi ion (xanh) và đuôi bụi (trắng vàng).</p></div>
+                <div class="tv-ib blue" style="margin:0;"><h4>☀️ Nhật Thực – NGUY HIỂM!</h4><p class="tv-text" style="font-size:.82rem;">KHÔNG nhìn thẳng! Dùng kính lọc đặc biệt hoặc camera + bộ lọc. Nhật thực toàn phần: Corona lộ ra.</p></div>
+              </div>
+              <div class="tv-ib green" style="margin-top:12px;"><h4>🔴 Nguyệt Thực – An Toàn</h4><p class="tv-text" style="font-size:.82rem;">Nguyệt thực toàn phần cho Trăng máu (đỏ cam). Quan sát bằng mắt thường hoặc kính hoàn toàn an toàn.</p></div>`,
+            quiz:[
+              {q:'Mưa sao băng xảy ra khi?',opts:['Sao bổ nổ','Trái Đất đi qua đuôi bụi sao chổi','Mặt Trăng che Mặt Trời','Tiểu hành tinh va khí quyển'],a:1},
+              {q:'Nhật thực toàn phần cho thấy gì đặc biệt?',opts:['Trăng máu','Vành nhật hoa (corona)','Sao chổi','Dải Ngân Hà'],a:1},
+              {q:'Nguyệt thực toàn phần xảy ra khi?',opts:['Mặt Trăng che Mặt Trời','Mặt Trăng vào bóng tối Trái Đất','Mặt Trời ở giữa','Trăng Mới'],a:1},
+              {q:'Để xem mưa sao băng tốt nhất?',opts:['Dùng kính thiên văn','Nằm ngửa, xem bằng mắt thường góc rộng','Đứng nhìn một hướng','Dùng ống nhòm'],a:1},
+              {q:'Đuôi sao chổi luôn hướng về đâu?',opts:['Hướng di chuyển','Ra xa Mặt Trời','Về Trái Đất','Về Mặt Trăng'],a:1}
+            ]
+          },
+          { type:'observe', title:'Quan sát', icon:'📷',
+            sys:'Bạn là AI gia sư Quan sát Module 5. Hướng dẫn chuẩn bị quan sát hiện tượng thiên văn đặc biệt qua camera. Nhấn mạnh an toàn nhật thực. Tiếng Việt, thân thiện.',
+            intro:'Sẵn sàng chứng kiến hiện tượng thiên văn đặc biệt! 🌠 Quan trọng: KHÔNG hướng camera vào Mặt Trời khi nhật thực nếu không có bộ lọc!',
+            prompts:['Hôm nay có mưa sao băng không?','Làm sao chuẩn bị xem nguyệt thực?','Camera có thể chụp sao băng không?','Đặt Pan/Tilt để bắt sao băng?'],
+            obsTargets:['Mưa sao băng','Sao chổi','Nguyệt thực','Nhật thực (có bộ lọc)','Siêu Trăng','Khác'],
+            obsLabel:'Hiện tượng đang quan sát',
+            obsP1:'Mô tả chi tiết: màu sắc, tốc độ, hướng di chuyển...',
+            obsP2:'Cảm xúc và suy nghĩ của em?'
+          },
+          { type:'experiment', title:'Thực nghiệm', icon:'🧪',
+            sys:'Bạn là AI gia sư Thực nghiệm Module 5. Giúp ghi chép chi tiết và định lượng hiện tượng. Tiếng Việt, thân thiện.',
+            intro:'Ghi chép càng chi tiết càng tốt – đây là dữ liệu khoa học thực sự! 📋',
+            prompts:['Ghi lại đặc điểm từng hiện tượng','Làm sao tính thời gian nguyệt thực?','Mưa sao băng mấy vệt/phút?'],
+            logCols:['Thời gian','Hiện tượng','Pan','Tilt','Số đếm/Cường độ','Mô tả chi tiết']
+          },
+          { type:'summary', title:'Tổng kết', icon:'🏆',
+            sys:'Bạn là AI gia sư Tổng kết Module 5 – toàn bộ khoá Thiên Văn STEM. Kết nối kiến thức 5 module, khuyến khích tiếp tục. Tiếng Việt, truyền cảm hứng.',
+            intro:'🎉 Bạn đã hoàn thành toàn bộ khoá học Thiên Văn STEM!',
+            prompts:['Cảm xúc và ý nghĩa khoa học','Hiện tượng nào ấn tượng nhất?','Làm sao dự đoán hiện tượng tương lai?'],
+            selfColor:'#f687b3', selfBorder:'rgba(246,135,179,.2)',
+            selfLabels:['Tổng kết những gì em đã học qua 5 module...','Hiện tượng nào ấn tượng nhất và tại sao?','Em sẽ tiếp tục khám phá thiên văn thế nào?']
+          }
+        ]
+      }
+    ];
+
+    let tvS = { currentMod:null, currentStage:0, currentAttemptId:null,
+      progress:{}, attempts:{}, stageXp:{}, selfRatings:{}, streak:0, lastActiveDate:null,
+      obsLogs:{}, observations:{} };
+
+    const tvSS = {
+      load(){ try{ const d=localStorage.getItem('tvLH2'); if(d) tvS={...tvS,...JSON.parse(d)}; }catch(e){} },
+      save(){ try{ localStorage.setItem('tvLH2',JSON.stringify(tvS)); }catch(e){} tvS.streak=tvS.streak||0; const today=new Date().toDateString(); if(tvS.lastActiveDate!==today){ tvS.streak=tvS.lastActiveDate===new Date(Date.now()-86400000).toDateString()?tvS.streak+1:1; tvS.lastActiveDate=today; tvSS.save(); } }
+    };
+    const tvGetXp=()=>Object.values(tvS.stageXp).reduce((t,m)=>t+Object.values(m).reduce((a,b)=>a+b,0),0);
+    const tvAwardXp=(modId,si)=>{ if(!tvS.stageXp[modId])tvS.stageXp[modId]={}; if(tvS.stageXp[modId][si])return 0; const mod=TV_MODS.find(m=>m.id===modId); const xp=mod.xp[si]||10; tvS.stageXp[modId][si]=xp; tvSS.save(); tvShowFlash('+'+xp+' XP 🌟'); return xp; };
+    const tvShowFlash=msg=>{ const el=document.createElement('div'); el.className='tv-xp-flash'; el.textContent=msg; document.body.appendChild(el); setTimeout(()=>el.remove(),2600); };
+    const tvMkAttemptId=()=>'a'+Date.now();
+    const tvCurAttempt=()=>tvS.attempts[tvS.currentMod]?.[tvS.currentAttemptId]||null;
+    const tvEnsureAttempt=(mid,aid)=>{ if(!tvS.attempts[mid])tvS.attempts[mid]={}; if(!tvS.attempts[mid][aid]){ const n=new Date(); tvS.attempts[mid][aid]={id:aid,label:'Lần '+(Object.keys(tvS.attempts[mid]).length+1)+' – '+n.toLocaleDateString('vi-VN'),startedAt:n.toISOString(),stage:0,chatHistory:{},quizScores:{}}; } return tvS.attempts[mid][aid]; };
+
+    const tvCamBlock=(size='280')=>`
+      <div class="tv-camera-feed" style="border-radius:14px;"><img src="/video_feed" alt="Live" style="width:100%;max-height:${size}px;object-fit:cover;border-radius:14px;"></div>
+      <div style="display:flex;margin-top:10px;justify-content:center;">${tvPtGrid()}</div>`;
+
+    const tvPtGrid=()=>`<div class="tv-pantilt-controls">
+      <div class="tv-pt-btn inactive"></div><div class="tv-pt-btn" onclick="tvCmd('UP')">▲</div><div class="tv-pt-btn inactive"></div>
+      <div class="tv-pt-btn" onclick="tvCmd('LEFT')">◀</div><div class="tv-pt-btn" onclick="tvCmd('CENTER')" style="font-size:.65rem;font-weight:700;">CTR</div><div class="tv-pt-btn" onclick="tvCmd('RIGHT')">▶</div>
+      <div class="tv-pt-btn inactive"></div><div class="tv-pt-btn" onclick="tvCmd('DOWN')">▼</div><div class="tv-pt-btn inactive"></div>
+    </div>`;
+
+    const tvTaEl=(id,rows,ph,extra='')=>`<textarea id="${id}" rows="${rows}" class="tv-ta" placeholder="${ph}" ${extra}></textarea>`;
+
+    const tvObsBlock=(modId,stage)=>{
+      const targets=stage.obsTargets||['Mặt Trăng','Sao Mộc','Sao Thổ','Khác'];
+      const label=stage.obsLabel||'Đối tượng quan sát';
+      const p1=stage.obsP1||'Em dự đoán sẽ thấy gì qua kính?';
+      const p2=stage.obsP2||'Em thực sự thấy gì? Hình dạng, màu sắc, chi tiết...';
+      return `<div class="tv-ib amber"><h4>🎯 Quan sát thực tế</h4><p class="tv-text">Dùng nút Pan/Tilt để hướng kính. Ghi dự đoán trước, mô tả thực tế sau.</p></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;">
+        <div><div class="tv-label">Live Camera</div>${tvCamBlock()}</div>
+        <div>
+          <div class="tv-label" style="margin-bottom:8px;">${label}</div>
+          <select id="tvOT${modId}" class="tv-select">${targets.map(t=>`<option>${t}</option>`).join('')}</select>
+          <div style="font-size:.8rem;color:#a0aec0;margin-bottom:5px;">${p1}</div>
+          ${tvTaEl('tvOP'+modId,3,p1)}
+          <div style="font-size:.8rem;color:#a0aec0;margin:10px 0 5px;">${p2}</div>
+          ${tvTaEl('tvOA'+modId,3,p2)}
+          <button onclick="tvSaveObs(${modId})" class="btn-primary" style="width:100%;margin-top:10px;">📌 Ghi nhận quan sát</button>
+          <div id="tvOS${modId}" style="margin-top:8px;font-size:.8rem;color:#48bb78;"></div>
+        </div>
+      </div>`;
+    };
+
+    const tvLogBlock=(modId,stage)=>{
+      const cols=stage.logCols||['Thời gian','Đối tượng','Pan','Tilt','Độ rõ','Ghi chú'];
+      return `<div class="tv-ib blue"><h4>📋 Ghi ít nhất 3 lần quan sát và so sánh</h4></div>
+      <div class="tv-card" style="margin-top:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <div style="font-weight:700;color:#e2e8f0;">📊 Nhật Ký Quan Sát</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="tvRecordLog(${modId})" class="btn-record" style="padding:9px 16px;font-size:.85rem;">📌 Ghi ngay</button>
+            <button onclick="tvCompareLog(${modId})" style="background:rgba(159,122,234,.2);border:1px solid rgba(159,122,234,.3);color:#9f7aea;border-radius:12px;padding:9px 16px;font-size:.85rem;cursor:pointer;font-weight:600;">📈 So sánh</button>
+            <button onclick="tvClearLog(${modId})" style="background:rgba(245,101,101,.15);border:1px solid rgba(245,101,101,.3);color:#fc8181;border-radius:12px;padding:9px 16px;font-size:.85rem;cursor:pointer;font-weight:600;">🗑️ Xóa</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;"><table class="tv-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}<th></th></tr></thead>
+        <tbody id="tvLB${modId}"><tr><td colspan="${cols.length+1}" style="text-align:center;color:#4a5568;padding:20px;font-size:.85rem;">Nhấn "Ghi ngay" để bắt đầu</td></tr></tbody></table></div>
+        <div id="tvCR${modId}" style="display:none;margin-top:14px;"></div>
+      </div>`;
+    };
+
+    const tvSummaryBlock=(modId,stage)=>{ const c=stage.selfColor||'#63b3ed'; const b=stage.selfBorder||'rgba(99,179,237,.2)';
+      return `<div class="tv-card" style="border-color:${b};background:rgba(255,255,255,.04);">
+        <h4 style="color:${c};font-size:1rem;font-weight:700;margin:0 0 14px;">✍️ Tự đánh giá</h4>
+        <div style="margin-bottom:14px;"><div style="font-size:.85rem;color:#a0aec0;margin-bottom:8px;">Mức độ hiểu bài:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="tvRate${modId}">
+            ${[1,2,3,4,5].map(n=>`<button class="tv-rate-btn" onclick="tvSelectRate(${modId},${n})">${'⭐'.repeat(n)} ${n}</button>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${(stage.selfLabels||[]).map((l,i)=>`<div><div style="font-size:.8rem;color:#a0aec0;margin-bottom:5px;">${l}</div>${tvTaEl('tvSelf'+modId+'_'+i,2,l,'style="border-color:'+b+';"')}</div>`).join('')}
+        </div>
+      </div>
+      <button onclick="tvOpenReportModal(${modId})" style="width:100%;background:${stage.selfColor?`linear-gradient(135deg,${c},${c}aa)`:c};color:${modId===4?'#fff':'#0b0f1a'};border:none;border-radius:16px;padding:16px;font-size:1rem;font-weight:800;cursor:pointer;margin-top:14px;box-shadow:0 6px 20px rgba(0,0,0,.3);">🤖 Tạo Báo cáo AI cá nhân hóa</button>`;
+    };
+
+    const tvChatBlock=(modId,si,stage)=>{
+      const qps=(stage.prompts||[]).map(p=>`<button class="tv-quick-btn" onclick="tvQA(${modId},${si},'${p.replace(/'/g,"\\'")}')"> ${p}</button>`).join('');
+      return `<div style="margin-top:22px;border-top:1px solid rgba(255,255,255,.07);padding-top:18px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:30px;height:30px;background:linear-gradient(135deg,#63b3ed,#9f7aea);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🔭</div>
+          <span style="font-weight:700;color:#63b3ed;font-size:.88rem;">Hỏi AI Thiên Văn về bài này</span>
+        </div>
+        ${qps?`<div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;">${qps}</div>`:''}
+        <div class="tv-chat-window" id="tvCW_${modId}_${si}"></div>
+        <div style="display:flex;gap:10px;margin-top:10px;">
+          <input id="tvCI_${modId}_${si}" type="text" placeholder="Hỏi về bài học này..."
+            style="flex:1;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);border-radius:14px;padding:10px 14px;color:#e2e8f0;font-size:.88rem;outline:none;font-family:inherit;"
+            onkeypress="if(event.key==='Enter')tvSendChat(${modId},${si})">
+          <button onclick="tvSendChat(${modId},${si})" class="btn-primary" style="padding:10px 18px;">Gửi 📤</button>
+        </div>
+      </div>`;
+    };
+
+    const tvRenderQuiz=(quiz,modId,si)=>{
+      if(!quiz?.length)return '';
+      const saved=tvCurAttempt()?.quizScores?.[si]||{};
+      return `<div style="margin-top:20px;border-top:1px solid rgba(255,255,255,.07);padding-top:18px;"><div style="font-weight:700;color:#e2e8f0;margin-bottom:14px;">📝 Kiểm tra nhanh</div>
+        ${quiz.map((q,qi)=>`<div style="margin-bottom:18px;"><p style="font-weight:600;color:#e2e8f0;margin-bottom:10px;">${qi+1}. ${q.q}</p>
+          ${q.opts.map((opt,oi)=>{ let cls='tv-quiz-option'; if(saved[qi]!==undefined){cls+=' disabled'; if(oi===q.a)cls+=' correct'; else if(oi===saved[qi])cls+=' wrong';} return `<button class="${cls}" onclick="tvAnswerQ(${modId},${si},${qi},${oi},${q.a})" id="tvQ${modId}_${si}_${qi}_${oi}">${opt}</button>`; }).join('')}
+          <div id="tvQF_${modId}_${si}_${qi}" style="margin-top:4px;">${saved[qi]===q.a?'<span style="color:#48bb78;font-size:.85rem;">✅ Chính xác!</span>':saved[qi]!==undefined?`<span style="color:#fc8181;font-size:.85rem;">❌ Đáp án đúng: ${q.opts[q.a]}</span>`:''}</div>
+        </div>`).join('')}
+      </div>`;
+    };
+
+    function tvAnswerQ(modId,si,qi,sel,correct){
+      const a=tvCurAttempt(); if(!a)return;
+      if(!a.quizScores)a.quizScores={}; if(!a.quizScores[si])a.quizScores[si]={};
+      if(a.quizScores[si][qi]!==undefined)return;
+      a.quizScores[si][qi]=sel; tvSS.save();
+      document.querySelectorAll(`[id^="tvQ${modId}_${si}_${qi}_"]`).forEach(b=>b.classList.add('disabled'));
+      document.getElementById(`tvQ${modId}_${si}_${qi}_${correct}`)?.classList.add('correct');
+      if(sel!==correct)document.getElementById(`tvQ${modId}_${si}_${qi}_${sel}`)?.classList.add('wrong');
+      const mod=TV_MODS.find(m=>m.id===modId);
+      const fb=document.getElementById(`tvQF_${modId}_${si}_${qi}`);
+      fb.innerHTML=sel===correct?'<span style="color:#48bb78;font-size:.85rem;">✅ Chính xác!</span>':`<span style="color:#fc8181;font-size:.85rem;">❌ Đáp án đúng: ${mod.stages[si].quiz?.[qi]?.opts[correct]||''}</span>`;
+    }
+
+    function tvRenderDashboard(){
+      const totalXp=tvGetXp(), maxXp=TV_MODS.reduce((a,m)=>a+m.totalXp,0), pct=Math.min(100,(totalXp/maxXp)*100);
+      const xpEl=document.getElementById('tvXpDisplay'); if(xpEl)xpEl.textContent=totalXp+' XP';
+      const xpBar=document.getElementById('tvXpBar'); if(xpBar)xpBar.style.width=pct+'%';
+      const completed=TV_MODS.filter(m=>tvS.progress[m.id]?.completed);
+      const badgesEl=document.getElementById('tvBadgesDisplay'); if(badgesEl)badgesEl.textContent=completed.map(m=>m.badge).join(' ');
+      const sb=document.getElementById('tvStreakBadge');
+      if(sb){ sb.style.display=(tvS.streak||0)>0?'inline-flex':'none'; sb.textContent='🔥 '+tvS.streak+' ngày'; }
+      const cb=document.getElementById('tvCertBtn'); if(cb)cb.style.display=completed.length===5?'inline-block':'none';
+      const grid=document.getElementById('tvModuleGrid'); if(!grid)return;
+      grid.innerHTML=TV_MODS.map(mod=>{
+        const p=tvS.progress[mod.id]||{stage:0,completed:false};
+        const pct2=Math.round(((p.stage||0)/4)*100);
+        const xpE=Object.values(tvS.stageXp?.[mod.id]||{}).reduce((a,b)=>a+b,0);
+        const badge=p.completed?'<span class="tv-badge tv-badge-green">✅ Hoàn thành</span>':(p.stage||0)>0?`<span class="tv-badge tv-badge-gold">⏳ ${p.stage}/4</span>`:'<span class="tv-badge tv-badge-blue">▶ Bắt đầu</span>';
+        return `<div class="tv-module-card ${p.completed?'completed':''}" onclick="tvOpenModule(${mod.id})">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
+            <div style="width:52px;height:52px;border-radius:16px;background:${mod.color};display:flex;align-items:center;justify-content:center;font-size:1.8rem;box-shadow:0 4px 12px rgba(0,0,0,.3);">${mod.icon}</div>
+            <div style="text-align:right;">${badge}<div style="font-size:.7rem;color:#718096;margin-top:4px;">+${xpE}/${mod.totalXp} XP</div></div>
+          </div>
+          <div style="font-weight:700;color:#e2e8f0;margin-bottom:4px;">${mod.title}</div>
+          <div style="font-size:.8rem;color:#718096;margin-bottom:12px;">${mod.desc}</div>
+          <div class="tv-progress-bar"><div class="tv-progress-fill" style="background:${mod.color};width:${pct2}%;"></div></div>
+          <div style="font-size:.72rem;color:#4a5568;margin-top:4px;text-align:right;">${pct2}% hoàn thành</div>
+        </div>`;
+      }).join('');
+    }
+
+    function tvOpenModule(modId){
+      tvS.currentMod=modId;
+      const attempts=tvS.attempts[modId]||{};
+      Object.keys(attempts).length===0?tvStartModule(modId):tvShowAttemptPicker(modId);
+    }
+    function tvShowAttemptPicker(modId){
+      const mod=TV_MODS.find(m=>m.id===modId), atts=tvS.attempts[modId]||{}, ids=Object.keys(atts).sort().reverse();
+      const list=ids.map(id=>{ const a=atts[id], pct=Math.round(((a.stage||0)/4)*100);
+        return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:border-color .2s;"
+          onmouseover="this.style.borderColor='#63b3ed'" onmouseout="this.style.borderColor='rgba(255,255,255,.1)'"
+          onclick="tvContinueAttempt(${modId},'${id}')">
+          <div><div style="font-weight:600;font-size:.88rem;color:#e2e8f0;">${a.label}</div><div style="font-size:.73rem;color:#718096;margin-top:2px;">Giai đoạn ${(a.stage||0)+1}/4</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="tv-badge ${a.completed?'tv-badge-green':'tv-badge-gold'}">${a.completed?'✅ Xong':'⏳ '+pct+'%'}</span>
+            <button onclick="event.stopPropagation();tvDeleteAttempt(${modId},'${id}')" style="background:rgba(245,101,101,.15);border:none;color:#fc8181;padding:5px 9px;border-radius:8px;cursor:pointer;font-size:.78rem;">🗑️</button>
+          </div></div>`;
+      }).join('');
+      tvShowModal(mod.icon+' '+mod.title,
+        `<p style="color:#718096;margin-bottom:14px;font-size:.88rem;">Bạn có <strong style="color:#e2e8f0;">${ids.length}</strong> lần thực hành.</p><div style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;">${list}</div>`,
+        '🆕 Bắt đầu lần mới',()=>tvStartModule(modId),'Hủy',null);
+    }
+    function tvStartModule(modId){ tvCloseModal(); tvS.currentMod=modId; tvS.currentStage=0; const aid=tvMkAttemptId(); tvS.currentAttemptId=aid; tvEnsureAttempt(modId,aid); tvSS.save(); tvShowModuleView(); tvRenderStage(); }
+    function tvContinueAttempt(modId,aid){ tvCloseModal(); tvS.currentMod=modId; tvS.currentAttemptId=aid; tvS.currentStage=tvS.attempts[modId]?.[aid]?.stage||0; tvShowModuleView(); tvRenderStage(); }
+    function tvDeleteAttempt(modId,aid){ if(!confirm('Xóa lần này?'))return; delete tvS.attempts[modId]?.[aid]; tvSS.save(); tvCloseModal(); tvShowAttemptPicker(modId); }
+    function tvShowModuleView(){ document.getElementById('tvDashboard').style.display='none'; document.getElementById('tvModuleView').style.display='block'; const mod=TV_MODS.find(m=>m.id===tvS.currentMod); document.getElementById('tvModuleViewTitle').textContent=mod.icon+' '+mod.title; document.getElementById('tvModuleViewDesc').textContent=mod.desc; }
+    function tvBackToDashboard(){ document.getElementById('tvDashboard').style.display='block'; document.getElementById('tvModuleView').style.display='none'; tvS.currentMod=null; tvS.currentAttemptId=null; tvRenderDashboard(); }
+
+    function tvRenderStage(){
+      const mod=TV_MODS.find(m=>m.id===tvS.currentMod), si=tvS.currentStage, stage=mod.stages[si];
+      document.getElementById('tvStageWizard').innerHTML=mod.stages.map((s,i)=>{
+        const done=tvS.stageXp?.[mod.id]?.[i]; const active=i===si;
+        return `<div class="tv-stage-step ${done?'done':active?'active':''}">
+          <div class="tv-stage-dot">${done?'✓':i+1}</div>
+          <div class="tv-stage-label">${s.title}</div>
+          <div class="tv-stage-xp">+${mod.xp[i]||10} XP</div>
+        </div>`;
+      }).join('');
+      document.getElementById('tvBtnPrev').style.display=si===0?'none':'block';
+      document.getElementById('tvBtnNext').textContent=si===mod.stages.length-1?'🏆 Hoàn thành Module!':'Tiếp tục →';
+      document.getElementById('tvBtnNext').style.display='block';
+      document.getElementById('tvBtnPrev').style.display=si===0?'none':'block';
+      let html=`<div class="tv-stage-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <div style="width:42px;height:42px;background:${mod.color};border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;">${stage.icon}</div>
+          <div><div style="font-size:.75rem;color:#718096;">Giai đoạn ${si+1}/4</div><div style="font-weight:700;color:#e2e8f0;font-size:1.1rem;">${stage.title}</div></div>
+          <div style="margin-left:auto;font-size:.78rem;font-weight:700;color:#f6ad55;background:rgba(246,173,85,.15);padding:4px 12px;border-radius:100px;">+${mod.xp[si]||10} XP</div>
+        </div>`;
+      if(stage.type==='theory'){ html+=(stage.content||''); html+=tvRenderQuiz(stage.quiz,mod.id,si); }
+      else if(stage.type==='observe'){ html+=tvObsBlock(mod.id,stage); }
+      else if(stage.type==='experiment'){ html+=tvLogBlock(mod.id,stage); }
+      else if(stage.type==='summary'){ html+=tvSummaryBlock(mod.id,stage); }
+      html+=tvChatBlock(mod.id,si,stage);
+      html+='</div>';
+      document.getElementById('tvStageContent').innerHTML=html;
+      const win=document.getElementById(`tvCW_${mod.id}_${si}`); if(!win)return;
+      const hist=tvCurAttempt()?.chatHistory?.[si]||[];
+      if(hist.length){ hist.forEach(m=>tvChatAppend(`tvCW_${mod.id}_${si}`,m.content,m.role==='user'?'user':'ai')); }
+      else{ tvChatAppend(`tvCW_${mod.id}_${si}`,stage.intro||'Hỏi mình bất kỳ điều gì nhé!','ai'); }
+      if(stage.type==='experiment')setTimeout(()=>tvRefreshLog(mod.id,stage.logCols),50);
+    }
+
+    function tvNextStage(){
+      const modId=tvS.currentMod, mod=TV_MODS.find(m=>m.id===modId), si=tvS.currentStage;
+      tvAwardXp(modId,si);
+      const a=tvCurAttempt(); if(a)a.stage=Math.max(a.stage||0,si+1);
+      if(!tvS.progress[modId])tvS.progress[modId]={stage:0,completed:false};
+      tvS.progress[modId].stage=Math.max(tvS.progress[modId].stage||0,si+1);
+      if(si>=mod.stages.length-1){
+        if(a)a.completed=true; tvS.progress[modId].completed=true; tvSS.save(); tvShowCompletion(modId);
+      } else { tvS.currentStage=si+1; tvSS.save(); tvRenderStage(); window.scrollTo(0,0); }
+    }
+    function tvPrevStage(){ if(tvS.currentStage>0){tvS.currentStage--;tvRenderStage();window.scrollTo(0,0);} }
+    function tvShowCompletion(modId){
+      const mod=TV_MODS.find(m=>m.id===modId), xp=Object.values(tvS.stageXp?.[modId]||{}).reduce((a,b)=>a+b,0);
+      document.getElementById('tvStageContent').innerHTML=`<div class="tv-stage-card" style="text-align:center;padding:40px 24px;">
+        <div style="font-size:4rem;margin-bottom:16px;">🏅</div>
+        <h3 style="color:#e2e8f0;font-size:1.4rem;font-weight:800;margin:0 0 8px;">Xuất sắc! Đã hoàn thành!</h3>
+        <p style="color:#718096;margin-bottom:8px;">${mod.icon} <strong>${mod.title}</strong></p>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(246,173,85,.15);border:1px solid rgba(246,173,85,.3);color:#f6ad55;padding:10px 24px;border-radius:100px;font-weight:800;font-size:1.1rem;margin-bottom:24px;">⭐ +${xp} XP tích lũy</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+          <button onclick="tvOpenReportModal(${modId})" class="btn-primary">📋 Xem Báo cáo</button>
+          <button onclick="tvOpenModule(${modId})" class="btn-secondary">🆕 Thực hành lại</button>
+          <button onclick="tvBackToDashboard()" style="background:linear-gradient(135deg,#48bb78,#38a169);color:#fff;border:none;border-radius:14px;padding:11px 22px;font-weight:700;cursor:pointer;">🌌 Về Dashboard</button>
+        </div>
+      </div>`;
+      document.getElementById('tvBtnNext').style.display='none';
+      document.getElementById('tvBtnPrev').style.display='none';
+    }
+
+    function tvChatAppend(winId,text,role){
+      const win=document.getElementById(winId); if(!win)return;
+      const d=document.createElement('div'); d.className=role==='user'?'tv-bubble-user':'tv-bubble-ai'; d.textContent=text;
+      win.appendChild(d); win.scrollTop=win.scrollHeight;
+    }
+    function tvQA(modId,si,text){ const inp=document.getElementById(`tvCI_${modId}_${si}`); if(inp){inp.value=text;tvSendChat(modId,si);} }
+    async function tvSendChat(modId,si){
+      const inp=document.getElementById(`tvCI_${modId}_${si}`), winId=`tvCW_${modId}_${si}`;
+      const win=document.getElementById(winId); if(!inp||!win)return;
+      const msg=inp.value.trim(); if(!msg)return;
+      inp.value=''; tvChatAppend(winId,msg,'user');
+      const typing=document.createElement('div'); typing.innerHTML='<div class="tv-typing-bubble"><div class="tv-typing-dot"></div><div class="tv-typing-dot"></div><div class="tv-typing-dot"></div></div>';
+      win.appendChild(typing); win.scrollTop=win.scrollHeight;
+      const mod=TV_MODS.find(m=>m.id===modId), stage=mod.stages[si];
+      const a=tvCurAttempt(); if(!a.chatHistory)a.chatHistory={}; if(!a.chatHistory[si])a.chatHistory[si]=[];
+      const hist=a.chatHistory[si];
+      try{
+        const res=await fetch('/learning_chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_prompt:stage.sys,messages:[...hist.map(h=>({role:h.role,content:h.content})),{role:'user',content:msg}]})});
+        const d=await res.json(); const reply=d.reply||'Xin lỗi, AI đang bận. Thử lại sau!';
+        typing.remove(); tvChatAppend(winId,reply,'ai');
+        hist.push({role:'user',content:msg},{role:'assistant',content:reply}); tvSS.save();
+      }catch(e){ typing.remove(); tvChatAppend(winId,'Lỗi kết nối AI. Kiểm tra server nhé!','ai'); }
+    }
+
+    function tvSaveObs(modId){
+      const t=document.getElementById('tvOT'+modId), p=document.getElementById('tvOP'+modId), a=document.getElementById('tvOA'+modId), s=document.getElementById('tvOS'+modId);
+      if(!p)return;
+      if(!tvS.observations)tvS.observations={};
+      tvS.observations[modId]={target:t?.value||'',predict:p.value,actual:a?.value||''}; tvSS.save();
+      if(s)s.textContent='✅ Đã lưu lúc '+new Date().toLocaleTimeString('vi-VN');
+    }
+    function tvRecordLog(modId){
+      const pan=window.tvPan!==undefined?window.tvPan+'°':'90°', tilt=window.tvTilt!==undefined?window.tvTilt+'°':'90°';
+      const target=document.getElementById('tvOT'+modId)?.value||'Chưa chọn';
+      if(!tvS.obsLogs)tvS.obsLogs={}; if(!tvS.obsLogs[modId])tvS.obsLogs[modId]=[];
+      tvS.obsLogs[modId].push({time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}),target,pan,tilt,clarity:'3',note:''}); tvSS.save();
+      const mod=TV_MODS.find(m=>m.id===modId); tvRefreshLog(modId,mod.stages[2].logCols);
+    }
+    function tvRefreshLog(modId,cols){
+      const tbody=document.getElementById('tvLB'+modId); if(!tbody)return;
+      const logs=tvS.obsLogs?.[modId]||[];
+      if(!logs.length){tbody.innerHTML=`<tr><td colspan="${(cols?.length||6)+1}" style="text-align:center;color:#4a5568;padding:20px;font-size:.85rem;">Chưa có dữ liệu.</td></tr>`;return;}
+      tbody.innerHTML=logs.map((r,i)=>`<tr><td>${r.time}</td><td>${r.target}</td><td>${r.pan}</td><td>${r.tilt}</td><td>${r.clarity||'–'}</td><td style="color:#718096;font-size:.82rem;">${r.note||'–'}</td><td><button onclick="tvDeleteLog(${modId},${i})" style="background:rgba(245,101,101,.15);border:none;color:#fc8181;padding:3px 8px;border-radius:6px;cursor:pointer;font-size:.75rem;">🗑️</button></td></tr>`).join('');
+    }
+    function tvDeleteLog(modId,idx){ if(!tvS.obsLogs?.[modId])return; tvS.obsLogs[modId].splice(idx,1); tvSS.save(); const mod=TV_MODS.find(m=>m.id===modId); tvRefreshLog(modId,mod.stages[2].logCols); }
+    function tvCompareLog(modId){
+      const logs=tvS.obsLogs?.[modId]||[], el=document.getElementById('tvCR'+modId); if(!el)return;
+      el.style.display='block';
+      if(logs.length<2){el.innerHTML='<p style="color:#f6ad55;font-size:.85rem;">Cần ít nhất 2 lần ghi để so sánh.</p>';return;}
+      el.innerHTML=`<div class="tv-ib blue"><h4>📊 So sánh ${logs.length} lần quan sát</h4><p class="tv-text" style="font-size:.82rem;">Đã ghi ${logs.length} lần từ ${logs[0].time} đến ${logs[logs.length-1].time}. Đối tượng: ${[...new Set(logs.map(l=>l.target))].join(', ')}. Pan: ${logs[0].pan} → ${logs[logs.length-1].pan}.</p></div>`;
+    }
+    function tvClearLog(modId){ if(!confirm('Xóa hết nhật ký?'))return; if(tvS.obsLogs)tvS.obsLogs[modId]=[]; tvSS.save(); const mod=TV_MODS.find(m=>m.id===modId); tvRefreshLog(modId,mod.stages[2].logCols); }
+
+    function tvSelectRate(modId,val){
+      if(!tvS.selfRatings)tvS.selfRatings={}; tvS.selfRatings[modId]=val; tvSS.save();
+      document.getElementById('tvRate'+modId)?.querySelectorAll('.tv-rate-btn').forEach((b,i)=>b.classList.toggle('selected',i<val));
+    }
+
+    window.tvPan=90; window.tvTilt=90;
+    function tvCmd(cmd){
+      if(cmd==='UP')window.tvTilt=Math.min(180,window.tvTilt+10); else if(cmd==='DOWN')window.tvTilt=Math.max(0,window.tvTilt-10);
+      else if(cmd==='LEFT')window.tvPan=Math.max(0,window.tvPan-10); else if(cmd==='RIGHT')window.tvPan=Math.min(180,window.tvPan+10);
+      else if(cmd==='CENTER'){window.tvPan=90;window.tvTilt=90;}
+      fetch('/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:`PAN=${window.tvPan};TILT=${window.tvTilt}`})}).catch(()=>{});
+    }
+
+    let tvRepMod=null, tvRepStars=0;
+    function tvOpenReportModal(modId){
+      tvRepMod=modId; const mod=TV_MODS.find(m=>m.id===modId);
+      document.getElementById('tvRepSubtitle').textContent=mod.icon+' '+mod.title;
+      document.getElementById('tvRepDate').textContent=new Date().toLocaleDateString('vi-VN');
+      document.getElementById('tvRepAiResult').style.display='none';
+      document.getElementById('tvRepPdfBtn').disabled=true;
+      const obs=tvS.observations?.[modId]; if(obs?.actual)document.getElementById('tvRepLearned').value=obs.actual;
+      document.querySelectorAll('.tv-star').forEach(s=>s.classList.remove('on'));
+      const logs=tvS.obsLogs?.[modId]||[];
+      document.getElementById('tvRepObsData').innerHTML=logs.length?`<div class="tvrep-section tvrep-s-info"><div class="tvrep-section-title">📡 Dữ Liệu Quan Sát</div><div style="overflow-x:auto;"><table class="tv-table"><thead><tr><th>Thời gian</th><th>Đối tượng</th><th>Pan</th><th>Tilt</th><th>Độ rõ</th></tr></thead><tbody>${logs.map(l=>`<tr><td>${l.time}</td><td>${l.target}</td><td>${l.pan}</td><td>${l.tilt}</td><td>${l.clarity||'–'}</td></tr>`).join('')}</tbody></table></div></div>`:'';
+      document.getElementById('tvReportModal').style.display='block';
+    }
+    function tvCloseReportModal(){ document.getElementById('tvReportModal').style.display='none'; }
+    function tvRepSetStars(n){ tvRepStars=n; document.querySelectorAll('.tv-star').forEach((s,i)=>s.classList.toggle('on',i<n)); }
+    async function tvGenerateReportAI(){
+      const modId=tvRepMod, mod=TV_MODS.find(m=>m.id===modId);
+      const name=document.getElementById('tvRepName').value||'Học sinh', cls=document.getElementById('tvRepClass').value||'';
+      const xpE=Object.values(tvS.stageXp?.[modId]||{}).reduce((a,b)=>a+b,0);
+      const prompt=`Tạo báo cáo học tập thiên văn cho học sinh:
+Tên: ${name}. Lớp: ${cls}. Module: ${mod.icon} ${mod.title}. XP: ${xpE}/${mod.totalXp}. Sao tự chấm: ${tvRepStars}/5. Lần quan sát: ${(tvS.obsLogs?.[modId]||[]).length} lần.
+Kiến thức tiếp thu: ${document.getElementById('tvRepLearned').value}.
+Điểm khó: ${document.getElementById('tvRepDiffNote').value}.
+Bài học: ${document.getElementById('tvRepLesson').value}.
+Ứng dụng: ${document.getElementById('tvRepRealworld').value}.
+Góp ý: ${document.getElementById('tvRepSuggestion').value}.
+Hãy viết báo cáo cá nhân hóa: nhận xét kiến thức, kỹ năng, khen điểm mạnh, gợi ý cải thiện, đề xuất quan sát tiếp theo. Tiếng Việt, thân thiện, không markdown.`;
+      const btn=document.querySelector('.tvrep-ai-btn'), res=document.getElementById('tvRepAiResult');
+      if(btn)btn.textContent='⏳ Đang tạo...';
+      res.style.display='block'; res.textContent='Đang tạo báo cáo AI...';
+      try{
+        const r=await fetch('/learning_report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+        const d=await r.json(); res.textContent=d.report||'Không thể tạo. Thử lại sau.'; document.getElementById('tvRepPdfBtn').disabled=false;
+      }catch(e){res.textContent='Lỗi kết nối server.';}
+      if(btn)btn.textContent='✨ TẠO BÁO CÁO AI CHI TIẾT';
+    }
+    async function tvExportPDF(){
+      const btn=document.getElementById('tvRepPdfBtn'); btn.disabled=true; btn.textContent='⏳ Đang xuất...';
+      const mod=TV_MODS.find(m=>m.id===tvRepMod), name=document.getElementById('tvRepName').value||'HocSinh';
+      const aiText=document.getElementById('tvRepAiResult').textContent||'', xpE=Object.values(tvS.stageXp?.[tvRepMod]||{}).reduce((a,b)=>a+b,0);
+      const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;padding:40px;color:#222;font-size:13px;}h1{color:#2b6cb0;font-size:20px;}.sub{color:#666;font-size:11px;margin-bottom:20px;}.s{margin-bottom:16px;padding:14px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;}.h{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#2b6cb0;margin-bottom:8px;}.ai-text{white-space:pre-wrap;line-height:1.8;}.ftr{margin-top:30px;font-size:10px;color:#9ca3af;text-align:center;}</style></head><body>
+      <h1>🔭 Báo Cáo Học Tập Thiên Văn STEM</h1><div class="sub">${mod.icon} ${mod.title} · ${name} · ${new Date().toLocaleDateString('vi-VN')} · +${xpE}/${mod.totalXp} XP</div>
+      <div class="s"><div class="h">🤖 Nhận Xét AI</div><div class="ai-text">${aiText}</div></div>
+      <div class="s" style="background:#f0fdf4;border-color:#bbf7d0;"><div class="h">📡 Thống kê</div>Số lần ghi nhật ký: ${(tvS.obsLogs?.[tvRepMod]||[]).length} lần</div>
+      <div class="ftr">🔭 Kính Thiên Văn STEM</div></body></html>`;
+      const iframe=document.createElement('iframe'); iframe.style.cssText='position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:0;visibility:hidden;'; document.body.appendChild(iframe);
+      iframe.contentDocument.open(); iframe.contentDocument.write(html); iframe.contentDocument.close();
+      await new Promise(r=>setTimeout(r,1000));
+      try{
+        const canvas=await html2canvas(iframe.contentDocument.body,{scale:2,useCORS:true,backgroundColor:'#fff',width:794});
+        const {jsPDF}=window.jspdf; const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+        const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),ih=(canvas.height*pw)/canvas.width;
+        let y=0,first=true; while(y<ih){if(!first)pdf.addPage(); pdf.addImage(canvas,'PNG',0,-y,pw,ih,'','FAST'); y+=ph; first=false;}
+        pdf.save(`BaoCao_ThienVan_${name.replace(/\s/g,'_')}.pdf`);
+      }finally{ document.body.removeChild(iframe); btn.disabled=false; btn.textContent='📄 TẢI XUỐNG PDF'; }
+    }
+
+    function tvShowModal(title,bodyHtml,okText,onOk,cancelText,onCancel){
+      document.getElementById('tvConfirmTitle').textContent=title;
+      document.getElementById('tvConfirmBody').innerHTML=bodyHtml;
+      const ok=document.getElementById('tvConfirmOkBtn'), cancel=document.getElementById('tvConfirmCancelBtn');
+      ok.textContent=okText||'OK'; cancel.textContent=cancelText||'Hủy';
+      ok.onclick=()=>{tvCloseModal();if(onOk)onOk();}; cancel.onclick=()=>{tvCloseModal();if(onCancel)onCancel();};
+      cancel.style.display=cancelText?'block':'none';
+      document.getElementById('tvConfirmModal').style.display='flex';
+    }
+    function tvCloseModal(){ document.getElementById('tvConfirmModal').style.display='none'; }
+
+    function tvShowCertificate(){
+      document.getElementById('tvCertModal').style.display='flex';
+      document.getElementById('tvCertDate').textContent='Hoàn thành ngày '+new Date().toLocaleDateString('vi-VN');
+      document.getElementById('tvCertXp').textContent=tvGetXp()+' XP';
+      document.getElementById('tvCertBadges').innerHTML=TV_MODS.map(m=>`<span class="tv-badge tv-badge-blue">${m.badge} ${m.title.split(' ')[0]}</span>`).join('');
+    }
+    function tvCloseCertificate(){ document.getElementById('tvCertModal').style.display='none'; }
+
+    // Khởi tạo dữ liệu Learning Hub v2 ngay khi script chạy (không ghi đè window.onload có sẵn của trang)
+    tvSS.load();
+  </script>
+
+  <!-- ==================== MOBILE BOTTOM NAVIGATION ==================== -->
+  <nav id="mobile-bottom-nav">
+    <button data-view="dashboard" class="active" onclick="switchView('dashboard')">
+      <i class="fa-solid fa-globe-asia"></i>
+      <span>3D Vũ Trụ</span>
+    </button>
+    <button data-view="camera" onclick="switchView('camera')">
+      <i class="fa-solid fa-circle-play"></i>
+      <span>Kính & Servo</span>
+    </button>
+    <button data-view="learning-hub" onclick="switchView('learning-hub')">
+      <i class="fa-solid fa-graduation-cap"></i>
+      <span>Học Tập</span>
+    </button>
+    <button data-view="chat" onclick="switchView('chat')">
+      <i class="fa-solid fa-user-astronaut"></i>
+      <span>Trợ Lý AI</span>
+    </button>
+    <button data-view="report" onclick="switchView('report')">
+      <i class="fa-solid fa-chart-line"></i>
+      <span>Báo Cáo</span>
+    </button>
+  </nav>
+</body>
+</html>
