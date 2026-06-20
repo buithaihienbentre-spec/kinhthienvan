@@ -4,9 +4,8 @@ import time
 import threading
 import os
 
-# ================== GEMINI - PHIÊN BẢN MỚI (2026) ==================
+# ================== GEMINI ==================
 import google.generativeai as genai
-from google.generativeai.types import GenerateContentConfig
 
 app = Flask(__name__)
 
@@ -31,12 +30,26 @@ LEARNING_MODEL_NAME = "gemini-2.5-flash-lite"
 
 MAIN_SYSTEM = """
 Bạn là Chatbot Thiên Văn thông minh, hỗ trợ học sinh sử dụng kính thiên văn trong học tập STEM.
-Nhiệm vụ: Giải thích thiên văn, hướng dẫn sử dụng kính, gợi ý quan sát.
-Phong cách: Thân thiện, dễ hiểu, phù hợp học sinh THPT.
+
+Nhiệm vụ:
+- Giải thích các hiện tượng thiên văn: Mặt Trăng, hành tinh, chòm sao, tinh vân
+- Hướng dẫn sử dụng kính thiên văn: xoay, zoom, căn chỉnh
+- Gợi ý nên quan sát gì theo thời gian (ban đêm, vị trí bầu trời)
+- Trả lời ngắn gọn, dễ hiểu, phù hợp học sinh THPT
+
+Phong cách:
+- Thân thiện, dễ hiểu
+- Có thể đưa ví dụ thực tế
+- Không dùng ký tự đặc biệt phức tạp
 """
 
 LEARNING_FORMAT_RULES = """
-Trả lời tiếng Việt, thân thiện như giáo viên. Viết văn xuôi, ngắn gọn, không markdown.
+Quy tắc định dạng:
+- Trả lời tiếng Việt, thân thiện như giáo viên
+- KHÔNG dùng markdown, không **, không #, không bullet
+- Viết văn xuôi, ngắn gọn, dễ hiểu
+- Khuyến khích học sinh, tích cực
+- Nếu không chắc: "Bạn nên tham khảo thêm tài liệu hoặc hỏi giáo viên nhé!"
 """
 
 _main_chat_lock = threading.Lock()
@@ -92,17 +105,14 @@ def chat():
     try:
         model = genai.GenerativeModel(MAIN_MODEL_NAME)
         contents = _build_history_contents(_main_chat_history)
-        contents.append({
-            "role": "user", 
-            "parts": [genai.types.Part.from_text(text=user_message)]
-        })
+        contents.append({"role": "user", "parts": [genai.types.Part.from_text(text=user_message)]})
 
         resp = model.generate_content(
             contents,
-            generation_config=GenerateContentConfig(
-                system_instruction=MAIN_SYSTEM,
+            generation_config=genai.GenerationConfig(
                 temperature=0.7,
-                max_output_tokens=1000
+                max_output_tokens=1000,
+                system_instruction=MAIN_SYSTEM
             )
         )
         reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời."
@@ -134,10 +144,10 @@ def learning_chat():
 
         resp = model.generate_content(
             contents,
-            generation_config=GenerateContentConfig(
-                system_instruction=full_system,
+            generation_config=genai.GenerationConfig(
                 temperature=0.8,
-                max_output_tokens=800
+                max_output_tokens=800,
+                system_instruction=full_system
             )
         )
         reply = (resp.text or "").strip() or "Xin lỗi, mình chưa nghĩ ra câu trả lời."
