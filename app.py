@@ -5,7 +5,7 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# ================== GEMINI - 2 KEY ==================
+# ================== GEMINI ==================
 GEMINI_API_KEY_MAIN = os.environ.get("GEMINI_API_KEY_MAIN")
 GEMINI_API_KEY_LEARNING = os.environ.get("GEMINI_API_KEY_LEARNING") or GEMINI_API_KEY_MAIN
 
@@ -14,9 +14,9 @@ print(f"🔑 LEARNING Key: {str(GEMINI_API_KEY_LEARNING)[:15]}...")
 
 try:
     genai.configure(api_key=GEMINI_API_KEY_MAIN)
-    print("✅ Gemini đã cấu hình thành công!")
+    print("✅ Gemini cấu hình thành công!")
 except Exception as e:
-    print(f"❌ Lỗi cấu hình Gemini: {e}")
+    print(f"❌ Lỗi Gemini: {e}")
 
 # ================== SYSTEM PROMPT ==================
 MAIN_SYSTEM = """
@@ -56,7 +56,7 @@ def static_files(filename):
 def command():
     return "OK"
 
-# ----- API 1: CHAT CHÍNH -----
+# ================== CHAT CHÍNH ==================
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.get_json() or {}
@@ -71,14 +71,13 @@ def chat():
         )
         chat = model.start_chat(history=[])
         response = chat.send_message(user_message)
-        reply = response.text.strip()
-        return jsonify({"response": reply})
+        return jsonify({"response": response.text.strip()})
     except Exception as e:
         print(f"❌ Chat error: {e}")
         return jsonify({"response": "Xin lỗi, AI đang gặp sự cố. Thử lại sau nhé!"})
 
 
-# ----- API 2: LEARNING CHAT -----
+# ================== LEARNING CHAT (Đang dùng) ==================
 @app.route('/learning_chat', methods=['POST'])
 def learning_chat():
     data = request.get_json() or {}
@@ -87,15 +86,17 @@ def learning_chat():
 
     try:
         full_system = LEARNING_SYSTEM + "\n\n" + system_prompt
+        
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             system_instruction=full_system
         )
+        
         chat = model.start_chat(history=[])
         last_msg = messages[-1].get('content', '') if messages else "Xin chào"
+        
         response = chat.send_message(last_msg)
-        reply = response.text.strip()
-        return jsonify({"reply": reply})
+        return jsonify({"reply": response.text.strip()})
     except Exception as e:
         print(f"❌ Learning chat error: {e}")
         return jsonify({"reply": "Xin lỗi, AI đang gặp sự cố. Thử lại nhé! 🙏"})
