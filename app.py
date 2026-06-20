@@ -53,6 +53,7 @@ Quy tắc định dạng:
 _main_chat_lock = threading.Lock()
 _main_chat_history = []
 
+
 def _build_history_contents(history_list):
     contents = []
     for turn in history_list:
@@ -64,14 +65,17 @@ def _build_history_contents(history_list):
         )
     return contents
 
+
 # ================== ROUTES ==================
 @app.route('/')
 def index():
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
 
+
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory('static', filename)
+
 
 # ----- Tab Chat chính -----
 @app.route('/chat', methods=['POST'])
@@ -187,6 +191,6 @@ def learning_report():
 if __name__ == '__main__':
     if not os.path.exists('static'):
         os.makedirs('static')
-    print("🌌 Kính Thiên Văn STEM Chatbot đang chạy...")
+    print("🌌 Kính Thiên Văn STEM (Chat mode) đang chạy...")
     print("📍 Truy cập: http://127.0.0.1:5000")
     app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
