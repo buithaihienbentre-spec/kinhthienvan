@@ -45,6 +45,14 @@
       animation: canvas-glow-pulse 4s ease-in-out infinite;
     }
 
+    /* Desktop: phóng to canvas 3D chiếm gần hết viewport, phần module học tập chìm xuống dưới (cuộn để xem) */
+    @media (min-width: 769px) {
+      #view-dashboard .solar-canvas-hero {
+        height: calc(100vh - 64px - 24px) !important; /* trừ header (64px) và margin nhỏ */
+        min-height: 560px;
+      }
+    }
+
     /* ===== CSS VARIABLES & CHỦ ĐỀ KHÔNG GIAN CYBER ===== */
     :root {
       --bg: #03030c;
@@ -601,15 +609,15 @@
   <!-- ==================== SIDEBAR TRÁI (NAVIGATION) ==================== -->
   <aside id="desktop-sidebar" class="w-[240px] h-full flex flex-col bg-[#050614] border-r border-indigo-950/40 shrink-0 z-40 relative">
     <!-- Brand Title -->
-    <div class="p-6 border-b border-indigo-950/40 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-fuchsia-600 flex items-center justify-center text-white glow-cyan">
+    <button onclick="switchView('dashboard')" class="p-6 border-b border-indigo-950/40 flex items-center gap-3 w-full text-left hover:bg-indigo-950/20 transition-colors cursor-pointer" title="Về trang chủ">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-fuchsia-600 flex items-center justify-center text-white glow-cyan shrink-0">
         <i class="fa-solid fa-satellite-dish text-lg"></i>
       </div>
       <div>
         <h1 class="font-orbitron font-extrabold text-sm tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">STEM OBSERVER</h1>
         <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Kính Thiên Văn 3D</p>
       </div>
-    </div>
+    </button>
 
     <!-- Danh sách Menu Navigation -->
     <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
