@@ -14,7 +14,7 @@ print(f"🔑 LEARNING Key: {str(GEMINI_API_KEY_LEARNING)[:15]}...")
 
 try:
     genai.configure(api_key=GEMINI_API_KEY_MAIN)
-    print("✅ Gemini cấu hình thành công!")
+    print("✅ Gemini OK!")
 except Exception as e:
     print(f"❌ Lỗi Gemini: {e}")
 
@@ -77,7 +77,7 @@ def chat():
         return jsonify({"response": "Xin lỗi, AI đang gặp sự cố. Thử lại sau nhé!"})
 
 
-# ================== LEARNING CHAT (Đang dùng) ==================
+# ================== LEARNING CHAT ==================
 @app.route('/learning_chat', methods=['POST'])
 def learning_chat():
     data = request.get_json() or {}
@@ -105,5 +105,5 @@ def learning_chat():
 if __name__ == '__main__':
     if not os.path.exists('static'):
         os.makedirs('static')
-    print("🌌 Kính Thiên Văn STEM đang chạy...")
+    print("🌌 Kính Thiên Văn STEM đang chạy trên Render...")
     app.run(host='0.0.0.0', port=5000, threaded=True)
